@@ -74,20 +74,14 @@ UpdateCameraFov() writes camera+0x40 directly from RenderWorld hook (before 3D r
 
 ## v2 Tasks
 
-### Context-Aware Strength
-Read character state (mounted, in combat, swimming, indoors) and adjust panini strength or disable automatically. Requires game state detection hooks.
+### 1. Settings GUI (native WoW frame XML)
+In-game settings panel with slider widgets for strength, vertical comp, fill, FOV. Toggle checkbox for enable/debug. Must be native WoW frame XML — no Ace3 dependency. Must be pfUI-reskinnable and compatible with external AddOns (no global namespace pollution, use `PaniniClassicWoW` prefix for all frames). Slash commands remain as fallback.
 
-### Per-Context FOV
-Different FOV for exploration, combat, indoor, outdoor. Driven by game state detection.
+### 2. Debug Shader Subcommands
+`/panini debug tint` and `/panini debug uv` independently toggle each shader mode. Currently a single on/off toggle. New CVars: `paniniDebugTint`, `paniniDebugUV`. Shader selection logic in ApplyPaniniPass.
 
-### Settings GUI
-Replace slash commands with an in-game settings frame (slider widgets). Ace3 or native WoW frame XML.
-
-### Pattern Scanning for Addresses
-Replace hardcoded memory addresses (`0x0063DEC0`, `0x00B4B2BC`, etc.) with byte-pattern scans to survive TurtleWoW binary updates.
-
-### Debug Shader Subcommands
-`/panini debug tint` and `/panini debug uv` independently. Currently single toggle.
+### 3. Pattern Scanning for Addresses
+Replace hardcoded memory addresses (`0x0063DEC0`, `0x00B4B2BC`, `0x00482D70`, etc.) with byte-pattern scans of WoW `.text` section. Single `PatternScan(base, size, signature)` utility, then replace all `constexpr` addresses. Survives TurtleWoW binary updates.
 
 ## Research Reports
 
