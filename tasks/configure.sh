@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -e
 
-BUILD_PRESET="${BUILD_PRESET:-cross-mingw32}"
+CONFIGURE_PRESET="${CONFIGURE_PRESET:-cross-mingw32}"
 
-echo "Configuring with preset: $BUILD_PRESET"
-cmake --preset "$BUILD_PRESET"
+echo "Configuring with preset: $CONFIGURE_PRESET"
+cmake --preset "$CONFIGURE_PRESET"

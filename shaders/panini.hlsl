@@ -86,18 +86,10 @@ float4 main(float2 texcoord : TEXCOORD0) : COLOR0 {
 
     float3 ray = paniniInverse(projXY, D, S);
 
-    if (ray.z > 0.0) {
-        float2 srcUV = (ray.xy / ray.z) / maxRectXY * 0.5 + 0.5;
+    float2 srcUV = (ray.xy / ray.z) / maxRectXY * 0.5 + 0.5;
 
-        if (srcUV.x >= 0.0 && srcUV.x <= 1.0 &&
-            srcUV.y >= 0.0 && srcUV.y <= 1.0) {
-            // Use gradient-based sampling for proper mip selection.
-            float2 dx = ddx(srcUV);
-            float2 dy = ddy(srcUV);
-            return tex2Dgrad(sceneTex, srcUV, dx, dy);
-        }
-    }
+    if (srcUV.x >= 0.0 && srcUV.x <= 1.0 && srcUV.y >= 0.0 && srcUV.y <= 1.0)
+        return tex2D(sceneTex, srcUV);
 
-    // Out-of-bounds: black.
     return float4(0.0, 0.0, 0.0, 1.0);
 }

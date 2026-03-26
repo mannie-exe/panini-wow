@@ -1,7 +1,6 @@
 -- PaniniClassicWoW: configuration addon for PaniniWoW.dll.
 -- Requires SuperWoW for CVar infrastructure.
--- The DLL handles FOV by writing directly to camera memory each frame;
--- no /reload needed, no SuperWoW FoV CVar dependency.
+-- FOV is managed by SuperAPI; PaniniWoW reads the camera FOV each frame.
 
 if not SUPERWOW_VERSION then
     DEFAULT_CHAT_FRAME:AddMessage("|cffff0000PaniniClassicWoW|r requires SuperWoW.")
@@ -10,10 +9,10 @@ end
 
 local defaults = {
     enabled = false,
-    strength = 0.5,
+    strength = 0.0333,
     verticalComp = 0.0,
-    fill = 0.8,
-    paniniFov = 2.0,
+    fill = 1.0,
+    fov = 2.6,
 }
 
 local frame = CreateFrame("Frame", "PaniniClassicWoWFrame", UIParent)
@@ -21,6 +20,8 @@ frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 
 local dllLoaded = false
+local lastKnownFov = 0
+local fovTrackSuppress = 0
 
 local function SafeGetCVar(name)
     local ok, val = pcall(GetCVar, name)
@@ -33,6 +34,32 @@ local function SafeSetCVar(name, value)
     return ok
 end
 
+local function GetUserFov()
+    local v = tonumber(SafeGetCVar("paniniUserFov"))
+    if v and v >= 0 then return v end
+    return nil
+end
+
+local function SetUserFov(v)
+    SafeSetCVar("paniniUserFov", tostring(v))
+end
+
+local function InitUserFov()
+    local saved = GetUserFov()
+    if saved then
+        lastKnownFov = saved
+        return
+    end
+    local current = tonumber(SafeGetCVar("FoV"))
+    if current and current > 0 then
+        SetUserFov(current)
+        lastKnownFov = current
+    else
+        SetUserFov(1.57)
+        lastKnownFov = 1.57
+    end
+end
+
 local function SyncCVarsToDLL()
     local c = PaniniClassicWoW_Config
     if not c then return end
@@ -41,7 +68,27 @@ local function SyncCVarsToDLL()
     SafeSetCVar("paniniStrength", tostring(c.strength))
     SafeSetCVar("paniniVertComp", tostring(c.verticalComp))
     SafeSetCVar("paniniFill", tostring(c.fill))
-    SafeSetCVar("paniniFov", tostring(c.paniniFov))
+    SafeSetCVar("paniniFov", tostring(c.fov))
+end
+
+local function EnablePanini()
+    local c = PaniniClassicWoW_Config
+    c.enabled = true
+    local pf = c.fov or 2.6
+    SafeSetCVar("FoV", tostring(pf))
+    SafeSetCVar("paniniEnabled", "1")
+    lastKnownFov = pf
+    fovTrackSuppress = 1
+end
+
+local function DisablePanini()
+    local c = PaniniClassicWoW_Config
+    c.enabled = false
+    local uf = GetUserFov() or 1.57
+    SafeSetCVar("FoV", tostring(uf))
+    SafeSetCVar("paniniEnabled", "0")
+    lastKnownFov = uf
+    fovTrackSuppress = 1
 end
 
 frame:SetScript("OnEvent", function()
@@ -55,6 +102,7 @@ frame:SetScript("OnEvent", function()
             end
         end
         SyncCVarsToDLL()
+        InitUserFov()
         if dllLoaded then
             DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPaniniClassicWoW|r loaded. /panini for commands.")
         else
@@ -62,6 +110,18 @@ frame:SetScript("OnEvent", function()
         end
     elseif event == "PLAYER_ENTERING_WORLD" then
         SyncCVarsToDLL()
+    end
+end)
+
+frame:SetScript("OnUpdate", function()
+    if fovTrackSuppress > 0 then
+        fovTrackSuppress = fovTrackSuppress - 1
+        return
+    end
+    local currentFov = tonumber(SafeGetCVar("FoV"))
+    if currentFov and currentFov > 0 and currentFov ~= lastKnownFov then
+        SetUserFov(currentFov)
+        lastKnownFov = currentFov
     end
 end)
 
@@ -79,18 +139,20 @@ SlashCmdList["PANINI"] = function(msg)
     local c = PaniniClassicWoW_Config
 
     if cmd == "toggle" then
-        c.enabled = not c.enabled
-        SafeSetCVar("paniniEnabled", c.enabled and "1" or "0")
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r " .. (c.enabled and "enabled" or "disabled"))
+        if c.enabled then
+            DisablePanini()
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r disabled")
+        else
+            EnablePanini()
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r enabled")
+        end
 
     elseif cmd == "on" then
-        c.enabled = true
-        SafeSetCVar("paniniEnabled", "1")
+        EnablePanini()
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r enabled")
 
     elseif cmd == "off" then
-        c.enabled = false
-        SafeSetCVar("paniniEnabled", "0")
+        DisablePanini()
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r disabled")
 
     elseif cmd == "strength" or cmd == "s" then
@@ -138,15 +200,20 @@ SlashCmdList["PANINI"] = function(msg)
     elseif cmd == "fov" then
         if val then
             local n = tonumber(val)
-            if n and n >= 1.0 and n <= 3.14 then
-                c.paniniFov = n
+            if n and n >= 0.1 and n <= 3.14 then
+                c.fov = n
                 SafeSetCVar("paniniFov", tostring(n))
-                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r fov: " .. n .. " rad (" .. string.format("%.0f", n * 57.2958) .. " deg)")
+                if c.enabled then
+                    SafeSetCVar("FoV", tostring(n))
+                    lastKnownFov = n
+                    fovTrackSuppress = 1
+                end
+                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r fov: " .. n)
             else
-                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r fov must be 1.0 to 3.14 (radians)")
+                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r fov must be 0.1 to 3.14")
             end
         else
-            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r fov: " .. c.paniniFov .. " rad (" .. string.format("%.0f", c.paniniFov * 57.2958) .. " deg)")
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r fov: " .. c.fov)
         end
 
     elseif cmd == "debug" then
@@ -159,26 +226,74 @@ SlashCmdList["PANINI"] = function(msg)
             DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r debug on (red channel -33%)")
         end
 
+    elseif cmd == "reset" then
+        PaniniClassicWoW_Config = {}
+        for k, v in pairs(defaults) do
+            PaniniClassicWoW_Config[k] = v
+        end
+        SyncCVarsToDLL()
+        InitUserFov()
+        if PaniniClassicWoW_Config.enabled then
+            SafeSetCVar("FoV", tostring(PaniniClassicWoW_Config.fov))
+            lastKnownFov = PaniniClassicWoW_Config.fov
+            fovTrackSuppress = 1
+        end
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r reset to defaults (disabled, strength=0.0333, vertical=0, fill=1.0, fov=2.6)")
+
     elseif cmd == "status" then
         local debugVal = SafeGetCVar("paniniDebug") or "0"
+        local uf = GetUserFov()
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPaniniClassicWoW|r status:")
         DEFAULT_CHAT_FRAME:AddMessage("  enabled: " .. tostring(c.enabled))
         DEFAULT_CHAT_FRAME:AddMessage("  debug: " .. (debugVal == "1" and "on" or "off"))
         DEFAULT_CHAT_FRAME:AddMessage("  strength: " .. c.strength)
         DEFAULT_CHAT_FRAME:AddMessage("  vertical: " .. c.verticalComp)
         DEFAULT_CHAT_FRAME:AddMessage("  fill: " .. c.fill)
-        DEFAULT_CHAT_FRAME:AddMessage("  panini fov: " .. c.paniniFov .. " rad (" .. string.format("%.0f", c.paniniFov * 57.2958) .. " deg)")
+        DEFAULT_CHAT_FRAME:AddMessage("  paniniFov: " .. c.fov)
+        DEFAULT_CHAT_FRAME:AddMessage("  savedFov: " .. tostring(uf or 1.57))
         DEFAULT_CHAT_FRAME:AddMessage("  dll: " .. (dllLoaded and "connected" or "not detected"))
+
+    elseif cmd == "cvars" then
+        local names = {
+            "paniniEnabled", "paniniStrength", "paniniVertComp",
+            "paniniFill", "paniniDebug", "paniniFov", "paniniUserFov", "FoV",
+        }
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r CVar readback:")
+        for _, name in ipairs(names) do
+            local val = SafeGetCVar(name)
+            if val then
+                DEFAULT_CHAT_FRAME:AddMessage("  " .. name .. " = " .. val)
+            else
+                DEFAULT_CHAT_FRAME:AddMessage("  " .. name .. " = (nil/not found)")
+            end
+        end
+
+    elseif cmd == "debuginfo" then
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r debug info:")
+        DEFAULT_CHAT_FRAME:AddMessage("  SUPERWOW_VERSION: " .. tostring(SUPERWOW_VERSION))
+        DEFAULT_CHAT_FRAME:AddMessage("  dllLoaded: " .. tostring(dllLoaded))
+        DEFAULT_CHAT_FRAME:AddMessage("  config.enabled: " .. tostring(c.enabled))
+        DEFAULT_CHAT_FRAME:AddMessage("  config.strength: " .. tostring(c.strength))
+        DEFAULT_CHAT_FRAME:AddMessage("  config.verticalComp: " .. tostring(c.verticalComp))
+        DEFAULT_CHAT_FRAME:AddMessage("  config.fill: " .. tostring(c.fill))
+        DEFAULT_CHAT_FRAME:AddMessage("  config.fov: " .. tostring(c.fov))
+        DEFAULT_CHAT_FRAME:AddMessage("  paniniUserFov: " .. tostring(GetUserFov()))
+        DEFAULT_CHAT_FRAME:AddMessage("  lastKnownFov: " .. tostring(lastKnownFov))
+        local fov = SafeGetCVar("FoV")
+        DEFAULT_CHAT_FRAME:AddMessage("  FoV CVar: " .. tostring(fov))
 
     else
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPaniniClassicWoW|r commands:")
         DEFAULT_CHAT_FRAME:AddMessage("  /panini toggle        toggle on/off")
         DEFAULT_CHAT_FRAME:AddMessage("  /panini on|off        enable/disable")
-        DEFAULT_CHAT_FRAME:AddMessage("  /panini debug         toggle debug shader (red -33%)")
+        DEFAULT_CHAT_FRAME:AddMessage("  /panini reset         reset to defaults")
+        DEFAULT_CHAT_FRAME:AddMessage("  /panini fov N         set panini FoV (0.1 to 3.14)")
         DEFAULT_CHAT_FRAME:AddMessage("  /panini strength N    set strength (0 to 1)")
         DEFAULT_CHAT_FRAME:AddMessage("  /panini vertical N    set vertical comp (-1 to 1)")
         DEFAULT_CHAT_FRAME:AddMessage("  /panini fill N        set fill zoom (0 to 1)")
-        DEFAULT_CHAT_FRAME:AddMessage("  /panini fov N         set panini FOV in radians (1.0 to 3.14)")
+        DEFAULT_CHAT_FRAME:AddMessage("  /panini debug         toggle debug shader (red -33%)")
         DEFAULT_CHAT_FRAME:AddMessage("  /panini status        show current settings")
+        DEFAULT_CHAT_FRAME:AddMessage("  /panini cvars         show CVar readback from engine")
+        DEFAULT_CHAT_FRAME:AddMessage("  /panini debuginfo     show debug diagnostics")
     end
 end

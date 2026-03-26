@@ -3,10 +3,9 @@
 #include "debug_shader.h"
 #include <cmath>
 
-EndScene_t g_pOriginalEndScene = nullptr;
-Reset_t    g_pOriginalReset    = nullptr;
+EndScene_t    g_pOriginalEndScene    = nullptr;
+Reset_t       g_pOriginalReset       = nullptr;
 
-// Render resources (lazy-created, released on Reset).
 static IDirect3DTexture9*     g_pSceneTexture  = nullptr;
 static IDirect3DSurface9*     g_pSceneSurface  = nullptr;
 static IDirect3DPixelShader9* g_pPaniniShader  = nullptr;
@@ -43,7 +42,7 @@ static bool CreateResources(IDirect3DDevice9* dev) {
         D3DUSAGE_RENDERTARGET, desc.Format,
         D3DPOOL_DEFAULT, &g_pSceneTexture, NULL);
     if (FAILED(hr)) {
-        LogInfo("hook", "CreateTexture failed hr=0x%08X", (unsigned)hr);
+        LOG_INFO("hook", "CreateTexture failed hr=0x%08X", (unsigned)hr);
         return false;
     }
     g_pSceneTexture->GetSurfaceLevel(0, &g_pSceneSurface);
@@ -51,7 +50,7 @@ static bool CreateResources(IDirect3DDevice9* dev) {
     hr = dev->CreatePixelShader(
         reinterpret_cast<const DWORD*>(g_paniniShaderBytecode), &g_pPaniniShader);
     if (FAILED(hr)) {
-        LogInfo("hook", "CreatePixelShader(panini) failed hr=0x%08X", (unsigned)hr);
+        LOG_INFO("hook", "CreatePixelShader(panini) failed hr=0x%08X", (unsigned)hr);
         ReleaseResources();
         return false;
     }
@@ -59,33 +58,20 @@ static bool CreateResources(IDirect3DDevice9* dev) {
     hr = dev->CreatePixelShader(
         reinterpret_cast<const DWORD*>(g_debugShaderBytecode), &g_pDebugShader);
     if (FAILED(hr)) {
-        LogInfo("hook", "CreatePixelShader(debug) failed hr=0x%08X", (unsigned)hr);
+        LOG_INFO("hook", "CreatePixelShader(debug) failed hr=0x%08X", (unsigned)hr);
         ReleaseResources();
         return false;
     }
 
-    LogInfo("hook", "resources ready: %ux%u fmt=%u panini=%p debug=%p",
-            desc.Width, desc.Height, desc.Format, g_pPaniniShader, g_pDebugShader);
+    LOG_INFO("hook", "resources ready: %ux%u fmt=%u", desc.Width, desc.Height, desc.Format);
     g_resourcesReady = true;
     return true;
 }
 
-// One-shot diagnostics; logged once then silenced.
-static bool g_firstFrame = true;
-
-HRESULT __stdcall Hooked_EndScene(IDirect3DDevice9* dev) {
-    if (g_firstFrame) {
-        float fov = ReadCameraFov();
-        float aspect = ReadCameraAspect();
-        LogInfo("hook", "EndScene first call: device=%p fov=%.4f aspect=%.4f",
-                dev, (double)fov, (double)aspect);
-        g_firstFrame = false;
-    }
-
+static void ApplyPaniniPass(IDirect3DDevice9* dev) {
     PaniniConfig cfg;
     PaniniConfig_ReadFromCVars(&cfg);
 
-    // Clamp to sane ranges; never feed inf/NaN into shaders or camera writes.
     if (cfg.strength != cfg.strength || cfg.strength < 0.0f) cfg.strength = 0.5f;
     if (cfg.strength > 1.0f) cfg.strength = 1.0f;
     if (cfg.verticalComp != cfg.verticalComp) cfg.verticalComp = 0.0f;
@@ -94,24 +80,12 @@ HRESULT __stdcall Hooked_EndScene(IDirect3DDevice9* dev) {
     if (cfg.fill != cfg.fill || cfg.fill < 0.0f) cfg.fill = 0.8f;
     if (cfg.fill > 1.0f) cfg.fill = 1.0f;
 
-    if (cfg.enabled) {
-        float targetFov = CVar_GetFloat("paniniFov", 2.0f);
-        if (targetFov > 0.5f && targetFov < 3.5f)
-            WriteCameraFov(targetFov);
-    }
-
     if (!cfg.enabled && !cfg.debug)
-        return g_pOriginalEndScene(dev);
+        return;
 
-    if (!g_resourcesReady) {
-        if (!CreateResources(dev))
-            return g_pOriginalEndScene(dev);
-    }
-
-    // Resolution change check.
     IDirect3DSurface9* pBB = nullptr;
     dev->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBB);
-    if (!pBB) return g_pOriginalEndScene(dev);
+    if (!pBB) return;
 
     D3DSURFACE_DESC bbDesc;
     pBB->GetDesc(&bbDesc);
@@ -119,32 +93,39 @@ HRESULT __stdcall Hooked_EndScene(IDirect3DDevice9* dev) {
         pBB->Release();
         ReleaseResources();
         if (!CreateResources(dev))
-            return g_pOriginalEndScene(dev);
+            return;
         dev->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBB);
-        if (!pBB) return g_pOriginalEndScene(dev);
+        if (!pBB) return;
     }
 
-    // Pick shader: debug mode uses the red-reduction test shader,
-    // normal mode uses the panini projection shader.
     IDirect3DPixelShader9* activeShader = cfg.debug ? g_pDebugShader : g_pPaniniShader;
 
-    // Compute panini shader constants (harmless if debug shader ignores them).
     float fov     = ReadCameraFov();
-    float aspect  = ReadCameraAspect();
+    float aspect  = (g_bbH > 0) ? static_cast<float>(g_bbW) / static_cast<float>(g_bbH) : 1.7778f;
     float halfTan = tanf(fov * 0.5f);
     float zoom    = ComputeFillZoom(cfg.strength, halfTan, aspect, cfg.fill);
+    if (zoom != zoom || zoom < 0.01f || zoom > 10.0f)
+        zoom = 1.273f;
+
+    {
+        static int s_diag = 0;
+        if (s_diag++ < 1) {
+            float swFov = CVar_GetFloat("FoV", 0.0f);
+            LOG_INFO("[diag]", "swFov=%08X fov=%08X htan=%08X zoom=%08X D=%08X fill=%08X asp=%08X",
+                FloatBits(swFov), FloatBits(fov), FloatBits(halfTan),
+                FloatBits(zoom), FloatBits(cfg.strength), FloatBits(cfg.fill),
+                FloatBits(aspect));
+        }
+    }
 
     float c0[4] = { cfg.strength, halfTan, zoom, 1.0f };
     float c1[4] = { cfg.verticalComp, aspect, 0.0f, 0.0f };
 
-    // Save state.
     D3D9State saved;
     SaveD3D9State(dev, &saved);
 
-    // Copy backbuffer to scene texture.
     dev->StretchRect(pBB, NULL, g_pSceneSurface, NULL, D3DTEXF_NONE);
 
-    // Fullscreen pass.
     dev->SetRenderTarget(0, pBB);
     dev->SetTexture(0, g_pSceneTexture);
     dev->SetPixelShader(activeShader);
@@ -185,13 +166,98 @@ HRESULT __stdcall Hooked_EndScene(IDirect3DDevice9* dev) {
 
     RestoreD3D9State(dev, &saved);
     pBB->Release();
+}
+
+static uintptr_t g_originalRenderWorldTarget = 0;
+
+// Called via JMP from 0x00482D70. ECX = WorldFrame* (__thiscall).
+// The function prologue (push ebp; mov ebp,esp; ...) does NOT clobber ECX,
+// so reading ECX in the first statement captures the caller's value.
+void Hooked_RenderWorld() {
+    void* thisPtr;
+    __asm__ __volatile__("" : "=c"(thisPtr));
+
+    UpdateCameraFov();
+
+    __asm__ __volatile__ (
+        "mov %0, %%ecx\n\t"
+        "call *%1\n\t"
+        :
+        : "r"(thisPtr), "r"(g_originalRenderWorldTarget)
+        : "eax", "edx", "ecx", "memory"
+    );
+
+    if (!g_resourcesReady || !IsWorldActive())
+        return;
+
+    IDirect3DDevice9* dev = GetWoWDevice();
+    if (!dev) return;
+
+    ApplyPaniniPass(dev);
+}
+
+static IDirect3DDevice9* g_pDevice = nullptr;
+static bool g_firstEndScene = true;
+
+HRESULT __stdcall Hooked_EndScene(IDirect3DDevice9* dev) {
+    if (g_firstEndScene) {
+        LOG_INFO("hook", "EndScene first call: device=%p", dev);
+        g_firstEndScene = false;
+    }
+
+    if (!g_resourcesReady) {
+        if (!CreateResources(dev))
+            return g_pOriginalEndScene(dev);
+    }
+
+    IDirect3DSurface9* pBB = nullptr;
+    dev->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBB);
+    if (pBB) {
+        D3DSURFACE_DESC bbDesc;
+        pBB->GetDesc(&bbDesc);
+        pBB->Release();
+        if (bbDesc.Width != g_bbW || bbDesc.Height != g_bbH) {
+            ReleaseResources();
+            CreateResources(dev);
+        }
+    }
 
     return g_pOriginalEndScene(dev);
 }
 
 HRESULT __stdcall Hooked_Reset(IDirect3DDevice9* dev, D3DPRESENT_PARAMETERS* pParams) {
-    LogInfo("hook", "Reset called, releasing resources");
+    LOG_INFO("hook", "Reset called, releasing resources");
     ReleaseResources();
-    g_firstFrame = true;
+    g_firstEndScene = true;
     return g_pOriginalReset(dev, pParams);
+}
+
+void InstallRenderWorldHook() {
+    auto target = reinterpret_cast<uint8_t*>(wow::RenderWorld_Addr);
+
+    if (target[0] != 0xE9) {
+        LOG_INFO("hook", "RenderWorld: expected existing JMP (0xE9), got 0x%02X", target[0]);
+        return;
+    }
+
+    // Read the existing JMP displacement (another mod already hooked this function).
+    int32_t existingDisp;
+    memcpy(&existingDisp, target + 1, 4);
+    g_originalRenderWorldTarget = reinterpret_cast<uintptr_t>(target + 5) + existingDisp;
+
+    LOG_INFO("hook", "RenderWorld: existing JMP to %p, chaining on top",
+            reinterpret_cast<void*>(g_originalRenderWorldTarget));
+
+    // Replace the JMP displacement to point to our function.
+    // No instruction boundary issues — we're just rewriting 4 bytes of an existing JMP.
+    DWORD oldProt;
+    VirtualProtect(target, 5, PAGE_EXECUTE_READWRITE, &oldProt);
+
+    int32_t newDisp = static_cast<int32_t>(
+        reinterpret_cast<intptr_t>(&Hooked_RenderWorld) - reinterpret_cast<intptr_t>(target + 5));
+    memcpy(target + 1, &newDisp, 4);
+
+    VirtualProtect(target, 5, oldProt, &oldProt);
+
+    LOG_INFO("hook", "RenderWorld: JMP redirected to %p", &Hooked_RenderWorld);
 }

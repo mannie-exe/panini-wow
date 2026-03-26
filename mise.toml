@@ -3,11 +3,14 @@ cmake = "latest"
 ninja = "latest"
 
 [env]
-# User must provide: C/C++ cross-compiler (i686-w64-mingw32-gcc), Wine (for fxc.exe)
-# We provide: cmake, ninja, and all CMake-managed dependencies
-
-# CPM.cmake source cache (shared across projects)
 CPM_SOURCE_CACHE = "~/.cache/CPM"
+
+# Build
+
+[tasks.clean]
+description = "Remove build artifacts"
+run = "rm -rf build"
+run_windows = "if (Test-Path build) { Remove-Item -Recurse -Force build }"
 
 [tasks.configure]
 alias = "c"
@@ -16,21 +19,25 @@ run = "sh tasks/configure.sh"
 run_windows = "& .\\tasks\\configure.ps1"
 
 [tasks.build]
-alias = ["b"]
-description = "Build PaniniWoW DLL"
-depends = ["configure"]
-run = "sh tasks/build.sh"
-run_windows = "& .\\tasks\\build.ps1"
+alias = ["b", "bd", "build:debug"]
+description = "Configure and build (Debug logging, optimized)"
+run = "CONFIGURE_PRESET=cross-mingw32-debug BUILD_PRESET=debug sh tasks/build.sh"
+run_windows = "$env:CONFIGURE_PRESET='cross-mingw32-debug'; $env:BUILD_PRESET='debug'; & .\\tasks\\build.ps1"
+
+[tasks."build:release"]
+alias = "br"
+description = "Configure and build (Release)"
+run = "CONFIGURE_PRESET=cross-mingw32 BUILD_PRESET=release sh tasks/build.sh"
+run_windows = "$env:CONFIGURE_PRESET='cross-mingw32'; $env:BUILD_PRESET='release'; & .\\tasks\\build.ps1"
+
+# Shaders
 
 [tasks.shader]
 description = "Compile HLSL shader to bytecode header"
 run = "sh tasks/shader.sh"
 run_windows = "& .\\tasks\\shader.ps1"
 
-[tasks.clean]
-description = "Remove build artifacts"
-run = "rm -rf build"
-run_windows = "if (Test-Path build) { Remove-Item -Recurse -Force build }"
+# Install
 
 [tasks.install]
 description = "Copy DLL + addon to TurtleWoW directory"

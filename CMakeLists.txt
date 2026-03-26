@@ -65,6 +65,11 @@ target_include_directories(PaniniWoW PRIVATE
 target_sources(PaniniWoW PRIVATE "${PANINI_SHADER_HEADER}" "${DEBUG_SHADER_HEADER}")
 add_dependencies(PaniniWoW shaders)
 
+option(PANINI_DEBUG_LOG "Enable debug logging (LOG_DEBUG calls)" OFF)
+if(PANINI_DEBUG_LOG)
+    target_compile_definitions(PaniniWoW PRIVATE PANINI_DEBUG_LOG=1)
+endif()
+
 # Link against D3D9 (provided by MinGW-w64 sysroot or Windows SDK)
 target_link_libraries(PaniniWoW PRIVATE
     d3d9

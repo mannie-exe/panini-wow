@@ -1,20 +1,32 @@
 # PaniniWoW Implementation Plan
 
-Panini projection post-process DLL for WoW 1.12.1 (TurtleWoW). Hooks D3D9 EndScene, applies cylindrical projection via pixel shader, configurable through in-game CVar system.
+Panini projection post-process DLL for WoW 1.12.1 (TurtleWoW). Hooks CGWorldFrame::RenderWorld, applies cylindrical projection via pixel shader, configurable through in-game CVar system.
 
 ## Current Status
 
-EndScene vtable hook works. CVar registration works. Shader compilation works. Debug shader (red -33%) produces a visible effect, confirming the full rendering pipeline (StretchRect, CreatePixelShader, DrawPrimitiveUP) functions end-to-end through DXVK.
+All layers implemented and functional at a baseline level. RenderWorld hook chains on existing mod hook. Panini shader produces correct panini-warped UV output (verified via diagnostic mode). Full rendering pipeline confirmed working (StretchRect, CreatePixelShader, DrawPrimitiveUP through DXVK).
 
-### Blocking Issues
+### Active Bugs
 
-1. **CVar float reads produce incorrect values in log output.** The cached float at CVar struct offset `+0x24` contains correct IEEE 754 bytes (verified via hex dump: `0x3FC90FDA` = 1.5707963), but `vfprintf` with `%f` on MinGW 32-bit under Wine displays them as `inf`. Explicit `(double)` casts did not fix it. Root cause is unclear; may be a MinGW CRT varargs ABI incompatibility under Wine. The actual float values passed to the shader may be correct (the debug shader works visually), but we cannot confirm via logging. Needs binary-level investigation or an alternative diagnostic approach (write values to a binary file, or render numeric debug overlay on screen).
+#### 1. FPU Control Word Corruption (CRITICAL)
 
-2. **Panini shader warps UI.** EndScene fires after both 3D world and UI rendering. The shader applies to the full frame. Fix requires hooking `CGWorldFrame::RenderWorld` at `0x00482D70` (game function, not D3D9) to apply the panini pass after world rendering but before UI drawing. This needs a trampoline/detour hook (5-byte JMP patch) since RenderWorld is a direct call, not a vtable entry. Research report 06 covers the approach.
+**Observed**: `FPUCW = 0x027F` (single precision) instead of `0x037F` (double precision, standard default).
 
-3. **FOV not applied by SuperWoW's CVar at runtime.** SuperWoW reads the FoV CVar only during camera init (startup or /reload), not per-frame. The DLL now writes FOV directly to camera memory (`[0x00B4B2BC] -> +0x65B8 -> +0x40`) each frame, bypassing SuperWoW's CVar. This should work once the CVar float read issue is resolved (the `paniniFov` value drives `WriteCameraFov`).
+**Effect**: `cosf(1.054)` returns `+infinity` instead of `0.494`. This causes `denom = 0.5 + inf = inf`, cascading through `k`, `edgeX`, `fitX`, `zoom`, `result` as NaN (`0xFFC00000`). ComputeFillZoom returns NaN.
 
-4. **Panini activates in character select/main menu.** EndScene fires on all screens. The DLL should only apply the panini pass when the 3D world is active. Detecting world-active state requires reading a game flag or checking whether `CGWorldFrame` exists.
+**Workaround**: NaN guard in hooks.cpp falls back to `zoom = 1.273f`. Visual output shows panini warping with excessive black borders (zoom not adaptive to current FOV).
+
+**Root cause**: Someone in the DLL stack (WoW, libSiliconPatch, or Wine) sets FPU to single precision mode. Investigation cleared rosettax87 (operates at Rosetta ptrace layer) and libSiliconPatch (hooks WoW binary functions, no FPUCW modification in code). Suspect remains WoW itself or Wine/DXVK initialization.
+
+**Fix needed**: Set FPUCW to double precision via `_control87(0x037F, 0xFFFF)` in our DLL init, before any math. Alternatively, precompute zoom in the Lua addon (safe from FPU issues) and pass via a new CVar.
+
+#### 2. Printf Float Bug (KNOWN, WORKAROUND IN PLACE)
+
+MinGW 32-bit varargs under Wine makes `%f` display all floats as `inf`. Workaround: log floats as hex via `FloatBits()` + `%08X`. Does NOT affect runtime float values (verified via hex dump).
+
+#### 3. Shader in Diagnostic Mode (INTENTIONAL, TEMPORARY)
+
+panini.hlsl outputs UV color encoding, not texture sample. Must switch to production before release.
 
 ## Runtime Dependencies
 
@@ -32,56 +44,62 @@ EndScene vtable hook works. CVar registration works. Shader compilation works. D
 ```
 Lua Addon (SetCVar) --> WoW CVar System <-- DLL (reads CVars each frame)
                                               |
-                                    RenderWorld hook (v1 target)
-                                         or EndScene hook (current)
+                                    RenderWorld hook (0x00482D70)
+                                    (calls existing chain, then post-process)
                                               |
                                     StretchRect + panini shader
                                               |
                                     UI draws on top (undistorted)
 ```
 
-## v1 Tasks (remaining)
+## v1 Tasks
 
-### Research: MinGW varargs ABI under Wine
+### P0: Fix FPU Control Word [BLOCKING]
 
-The `vfprintf` issue may affect shader constant values too, not just logging. Need to determine:
-- Whether `float` -> `double` promotion in varargs is broken at the compiler level or the CRT level
-- Whether `SetPixelShaderConstantF` (which takes `float*`, not varargs) is affected (probably not)
-- Alternative diagnostic: write CVar float values to a binary log file and inspect with xxd, or render debug values as colored pixels on screen
+Set FPUCW to standard double precision in DLL init, before any trig calls.
 
-### Research: trampoline/detour hooking for RenderWorld
+Options (in order of preference):
+1. `_control87(0x037F, 0xFFFF)` call in `InitThread()` before `InstallHooks()`
+2. Inline `fldcw` in `ComputeFillZoom` before the trig chain
+3. Precompute zoom in Lua addon, pass via `paniniZoom` CVar (avoids trig entirely)
+4. Custom SSE2-based trig implementation (avoids x87 entirely)
 
-The pre-UI hook requires patching the first bytes of `CGWorldFrame::RenderWorld` at `0x00482D70` with a JMP to our hook function. Options:
-- Manual 5-byte JMP trampoline (save original bytes, write JMP rel32)
-- MinHook library (CPM dependency, well-tested, MIT license)
-- hadesmem (what nampower uses, but heavy dependency)
+Test: rebuild, relaunch WoW, verify `FPUCW=0x037F` in log and `denom` is valid (~0.994).
 
-The hook function calls the original RenderWorld, then applies the panini post-process using the device pointer from `[0x00C0ED38] -> +0x38A8`.
+### P1: Switch Shader to Production Mode
 
-### Research: world-active detection
+Replace diagnostic UV output in panini.hlsl with actual texture sampling:
+- Remove lines 89-96 (diagnostic block)
+- Remove lines 98-99 (dead code)
+- Add `tex2Dgrad(sceneTex, srcUV, ddx(srcUV), ddy(srcUV))` with out-of-bounds black
+- Use `dFdx`/`dFdy` for derivative computation (Ben Golus: procedural UV derivatives produce artifacts)
+- Add `ray.z > 0.0` check from Fabric reference shader
 
-Detect whether the 3D world is rendering (in-game) vs menus/character select. Options:
-- Check if `CGWorldFrame` pointer at `0x00B4B2BC` is non-null (null at login screen, non-null in-world)
-- Read a game state flag
-- Only apply panini if `ReadCameraFov` returns a valid value (non-zero, non-inf)
+### P2: Remove Diagnostic Logging
 
-### Implement: RenderWorld hook
+Once P0 is verified:
+- Remove `[cfz]` trace from ComputeFillZoom (panini.cpp)
+- Remove `FPUCW` log
+- Remove guard-hit logging
+- Remove `post-guard` log
+- Remove CVar raw byte dump (cvar.cpp)
+- Keep one-shot hex diagnostic for shader constants (useful for ongoing debug)
 
-Replace EndScene as the panini application point. EndScene remains for resource management and Reset handling.
+### P3: Refactor `/panini debug` to Accept Subcommands
 
-### Implement: FOV direct write (verify)
+Current: `/panini debug` toggles between tint shader (debug.hlsl) and panini shader.
+Target: `/panini debug tint` and `/panini debug uv` independently toggle each shader.
+Requires: separate CVar (`paniniDebugTint`, `paniniDebugUV`) or subcommand-based shader selection.
 
-`WriteCameraFov` is implemented but blocked on CVar float read verification. Once we confirm the float values are correct (via non-printf diagnostic), enable per-frame FOV writing.
+### P4: Gate Panini on World-Active State
 
-### Implement: disable panini outside world
-
-Guard the panini pass on world-active state. No shader application at login screen, character select, or loading screens.
+Already implemented (`IsWorldActive()` check in `Hooked_RenderWorld`). Verify it works by checking that panini does not activate at login screen, character select, or loading screens.
 
 ## v2 Tasks (future)
 
 ### Dynamic shader enable/disable based on character state
 
-Read character state (mounted, in combat, swimming, etc.) and adjust panini strength or disable it in specific contexts. Requires hooking additional game functions or reading character state memory.
+Read character state (mounted, in combat, swimming, etc.) and adjust panini strength or disable it in specific contexts.
 
 ### Configurable FOV per-context
 
@@ -89,35 +107,40 @@ Different FOV for exploration, combat, indoor, outdoor. Driven by game state det
 
 ### Settings GUI
 
-Replace slash commands with an in-game settings frame (slider widgets). Optional dependency on Ace2 or standalone frame creation.
+Replace slash commands with an in-game settings frame (slider widgets).
 
 ### Pattern scanning for addresses
 
-Replace hardcoded memory addresses with byte-pattern scans to survive TurtleWoW binary updates. Scan for known instruction sequences around the target addresses.
+Replace hardcoded memory addresses with byte-pattern scans to survive TurtleWoW binary updates.
 
 ## Completed Layers
 
 ### Layer 0: Logging [DONE]
-Two-level (TRACE/INFO), wide/fat format, `[LEVEL] [module] message`, no external libs.
-Known issue: `%f` format broken in MinGW 32-bit varargs under Wine.
+Two-level (TRACE/INFO), hex-bit float logging via `FloatBits()`.
 
-### Layer 1: CVar System [DONE, PARTIALLY VERIFIED]
-Registration via `CVar::Register` at `0x0063DB90` (__fastcall). Lookup via `CVarLookup` at `0x0063DEC0` (__fastcall). Struct offsets verified: string at `+0x20`, float at `+0x24`, int at `+0x28`. CVars register and look up correctly. Float read correctness needs non-printf verification.
+### Layer 1: CVar System [DONE]
+Registration via `CVar::Register` at `0x0063DB90`. Lookup via `CVarLookup` at `0x0063DEC0`. Struct offsets verified via hex dump: string +0x20, float +0x24, int +0x28. All CVars read correctly (confirmed via hex).
+
+### Layer 2: RenderWorld Hook [DONE]
+JMP chain on existing hook at `0x00482D70`. Calls existing chain via trampoline, then applies panini post-process. ECX preserved via inline asm for __thiscall convention.
 
 ### Layer 3: D3D9 EndScene Hook [DONE]
-Dummy device vtable technique. EndScene at vtable[42], Reset at vtable[16]. Confirmed firing via log and visual debug shader effect.
+Dummy device vtable technique. EndScene at vtable[42], Reset at vtable[16]. Used for resource management and Reset handling only (not panini pass).
 
-### Layer 4: Panini Post-Process Pass [DONE, NEEDS CVar FIX]
-StretchRect, shader constants, fullscreen quad with half-pixel offset, state save/restore. Both panini and debug shaders compile and load. Blocked on correct CVar value delivery.
+### Layer 4: Panini Post-Process Pass [DONE, NEEDS P0 FIX]
+StretchRect, shader constants, fullscreen quad (D3DFVF_XYZRHW), state save/restore. Both panini and debug shaders compile and load. Zoom fallback workaround in place for FPU bug.
 
 ### Layer 5: Device Reset [DONE]
 Resource release on Reset, lazy recreation on next EndScene.
 
 ### Layer 6: Lua Addon [DONE]
-CVar-based config, account-wide SavedVariables, slash commands, pcall-guarded CVar access.
+CVar-based config, account-wide SavedVariables, slash commands (`/panini on|off|toggle|debug|strength|vertical|fill|status|cvars|debuginfo`), pcall-guarded CVar access. Addon symlinked to WoW Interface/AddOns/.
 
-### Shader Compilation Pipeline [DONE]
-fxc2 (vendored from philippremy/fxc2, patched -Vn bug) compiled with MinGW, invoked via Wine, produces ps_3_0 bytecode headers embedded in DLL.
+### Layer 7: World-Active Detection [DONE]
+`IsWorldActive()` checks `CGWorldFrame` pointer at `0x00B4B2BC`.
+
+### Layer 8: Shader Compilation Pipeline [DONE]
+fxc2 (vendored, patched -Vn bug), invoked via Wine, produces ps_3_0 bytecode headers embedded in DLL.
 
 ## Research Reports
 
@@ -129,3 +152,15 @@ fxc2 (vendored from philippremy/fxc2, patched -Vn bug) compiled with MinGW, invo
 | 04 Implementation | `~/.atlas/integrator/reports/panini-classic-wow/04-*` | CVar addresses, camera offsets, vtable indices |
 | 05 SuperWoW Review | `~/.atlas/integrator/reports/panini-classic-wow/05-*` | SuperWoW internals, nampower hooking, DXVK vtable analysis |
 | 06 FOV + Pre-UI Hook | `~/.atlas/integrator/reports/panini-classic-wow/06-*` | Direct FOV write, RenderWorld hook, device pointer chain |
+| 07 MinGW NaN | `~/.atlas/integrator/analysis/panini-classic-wow/mingw-nan-research-*` | x87 80-bit precision, SSE2 fix analysis |
+| 08 D3D9 Post-Process | `~/.atlas/integrator/analysis/panini-classic-wow/d3d9-postprocess-research-*` | WoW pipeline order, fullscreen quad, DXVK compatibility |
+| 09 CVar Float | `~/.atlas/integrator/analysis/panini-classic-wow/cvar-float-research-*` | CVar struct layout, float init timing |
+| 10 Panini Projection | `~/.atlas/integrator/analysis/panini-classic-wow/panini-projection-research-*` | Fill-zoom validation, tex2Dgrad recommendation |
+| 11 libSilicon FPU | `~/.atlas/integrator/analysis/panini-classic-wow/libsilicon-fpu-research-*` | rosettax87/libSiliconPatch analysis, FPUCW investigation |
+
+## Decisions Log
+- 2026-03-26: Confirmed FPU control word corruption (0x027F) is root cause of NaN in ComputeFillZoom. cosf returns +infinity for valid input. Workaround: hardcoded zoom fallback. Fix pending. [atlas]
+- 2026-03-26: Ruled out rosettax87 and libSiliconPatch as FPU interference sources. rosettax87 operates at Rosetta ptrace layer. libSiliconPatch hooks WoW binary functions only. [atlas + integrator research]
+- 2026-03-26: Confirmed CVar float reads are correct via hex dump. Printf bug is display-only, not data corruption. [atlas]
+- 2026-03-26: Reverted -msse2 -mfpmath=sse from toolchain (doesn't fix system libm trig which still uses x87). [atlas]
+- 2026-03-26: ComputeFillZoom math verified correct via Python trace. Bug is runtime FPU environment, not algorithm. [atlas]

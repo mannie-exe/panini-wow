@@ -19,11 +19,12 @@
         },
         {
             "name": "cross-mingw32-debug",
-            "displayName": "Cross-compile (MinGW i686 -> PE32 DLL, Debug)",
+            "displayName": "Cross-compile (MinGW i686 -> PE32 DLL, Debug logging)",
             "inherits": "base",
             "toolchainFile": "${sourceDir}/cmake/toolchain-mingw32.cmake",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "PANINI_DEBUG_LOG": "ON"
             }
         },
         {

@@ -16,6 +16,11 @@ set(CMAKE_C_COMPILER i686-w64-mingw32-gcc)
 set(CMAKE_CXX_COMPILER i686-w64-mingw32-g++)
 set(CMAKE_RC_COMPILER i686-w64-mingw32-windres)
 
+# SSE2 for float math: eliminates x87 80-bit precision and FPU control word
+# corruption under Wine/Rosetta. All targets support SSE2 (Pentium 4+, 2001).
+set(CMAKE_C_FLAGS_INIT "-msse2 -mfpmath=sse")
+set(CMAKE_CXX_FLAGS_INIT "-msse2 -mfpmath=sse")
+
 # Static link libgcc/libstdc++ so the DLL has no MinGW runtime dependencies
 set(CMAKE_EXE_LINKER_FLAGS_INIT "-static-libgcc -static-libstdc++")
 set(CMAKE_SHARED_LINKER_FLAGS_INIT "-static-libgcc -static-libstdc++")
