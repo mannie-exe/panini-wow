@@ -31,8 +31,18 @@ compile_hlsl(
     VARNAME  g_paniniShaderBytecode
 )
 
+set(DEBUG_SHADER_HEADER "${CMAKE_BINARY_DIR}/generated/debug_shader.h")
+
+compile_hlsl(
+    SOURCE   "${CMAKE_SOURCE_DIR}/shaders/debug.hlsl"
+    OUTPUT   "${DEBUG_SHADER_HEADER}"
+    ENTRY    main
+    PROFILE  ps_3_0
+    VARNAME  g_debugShaderBytecode
+)
+
 # Custom target so we can build shaders independently: cmake --build build --target shaders
-add_custom_target(shaders DEPENDS "${PANINI_SHADER_HEADER}")
+add_custom_target(shaders DEPENDS "${PANINI_SHADER_HEADER}" "${DEBUG_SHADER_HEADER}")
 
 #------------------------------------------------------------------------------
 # PaniniWoW DLL
@@ -41,7 +51,7 @@ add_library(PaniniWoW SHARED
     src/dllmain.cpp
     src/hooks.cpp
     src/panini.cpp
-    src/config.cpp
+    src/cvar.cpp
     src/state.cpp
     src/log.cpp
 )
@@ -51,8 +61,8 @@ target_include_directories(PaniniWoW PRIVATE
     "${CMAKE_BINARY_DIR}/generated"
 )
 
-# Shader bytecode header is a generated dependency
-target_sources(PaniniWoW PRIVATE "${PANINI_SHADER_HEADER}")
+# Shader bytecode headers are generated dependencies
+target_sources(PaniniWoW PRIVATE "${PANINI_SHADER_HEADER}" "${DEBUG_SHADER_HEADER}")
 add_dependencies(PaniniWoW shaders)
 
 # Link against D3D9 (provided by MinGW-w64 sysroot or Windows SDK)

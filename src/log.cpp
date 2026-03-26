@@ -15,35 +15,28 @@ void LogShutdown() {
     }
 }
 
-void LogInfo(const char* fmt, ...) {
+void LogInfo(const char* mod, const char* fmt, ...) {
     if (!g_logFile) return;
+    fprintf(g_logFile, "[INFO] [%s] ", mod);
     va_list args;
     va_start(args, fmt);
-    fprintf(g_logFile, "[INFO] ");
     vfprintf(g_logFile, fmt, args);
+    va_end(args);
     fprintf(g_logFile, "\n");
     fflush(g_logFile);
-    va_end(args);
 }
 
-void LogWarn(const char* fmt, ...) {
+void LogTrace(const char* mod, const char* fmt, ...) {
+#ifndef NDEBUG
     if (!g_logFile) return;
+    fprintf(g_logFile, "[TRACE] [%s] ", mod);
     va_list args;
     va_start(args, fmt);
-    fprintf(g_logFile, "[WARN] ");
     vfprintf(g_logFile, fmt, args);
+    va_end(args);
     fprintf(g_logFile, "\n");
     fflush(g_logFile);
-    va_end(args);
-}
-
-void LogError(const char* fmt, ...) {
-    if (!g_logFile) return;
-    va_list args;
-    va_start(args, fmt);
-    fprintf(g_logFile, "[ERROR] ");
-    vfprintf(g_logFile, fmt, args);
-    fprintf(g_logFile, "\n");
-    fflush(g_logFile);
-    va_end(args);
+#else
+    (void)mod; (void)fmt;
+#endif
 }
