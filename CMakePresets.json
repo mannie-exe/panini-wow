@@ -1,0 +1,53 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}"
+        },
+        {
+            "name": "cross-mingw32",
+            "displayName": "Cross-compile (MinGW i686 -> PE32 DLL)",
+            "inherits": "base",
+            "toolchainFile": "${sourceDir}/cmake/toolchain-mingw32.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "cross-mingw32-debug",
+            "displayName": "Cross-compile (MinGW i686 -> PE32 DLL, Debug)",
+            "inherits": "base",
+            "toolchainFile": "${sourceDir}/cmake/toolchain-mingw32.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "windows",
+            "displayName": "Native Windows (MSVC)",
+            "inherits": "base",
+            "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "release",
+            "configurePreset": "cross-mingw32"
+        },
+        {
+            "name": "debug",
+            "configurePreset": "cross-mingw32-debug"
+        },
+        {
+            "name": "windows",
+            "configurePreset": "windows"
+        }
+    ]
+}

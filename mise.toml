@@ -1,0 +1,39 @@
+[tools]
+cmake = "latest"
+ninja = "latest"
+
+[env]
+# User must provide: C/C++ cross-compiler (i686-w64-mingw32-gcc), Wine (for fxc.exe)
+# We provide: cmake, ninja, and all CMake-managed dependencies
+
+# CPM.cmake source cache (shared across projects)
+CPM_SOURCE_CACHE = "~/.cache/CPM"
+
+[tasks.configure]
+alias = "c"
+description = "Configure CMake build"
+run = "sh tasks/configure.sh"
+run_windows = "& .\\tasks\\configure.ps1"
+
+[tasks.build]
+alias = ["b"]
+description = "Build PaniniWoW DLL"
+depends = ["configure"]
+run = "sh tasks/build.sh"
+run_windows = "& .\\tasks\\build.ps1"
+
+[tasks.shader]
+description = "Compile HLSL shader to bytecode header"
+run = "sh tasks/shader.sh"
+run_windows = "& .\\tasks\\shader.ps1"
+
+[tasks.clean]
+description = "Remove build artifacts"
+run = "rm -rf build"
+run_windows = "if (Test-Path build) { Remove-Item -Recurse -Force build }"
+
+[tasks.install]
+description = "Copy DLL + addon to TurtleWoW directory"
+depends = ["build"]
+run = "sh tasks/install.sh"
+run_windows = "& .\\tasks\\install.ps1"
