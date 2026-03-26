@@ -75,14 +75,16 @@ void UpdateCameraFov() {
     auto pCam = *reinterpret_cast<uint8_t**>(pWF + wow::ActiveCamera_Off);
     if (!pCam) return;
 
+#ifdef PANINI_DEBUG_LOG
     {
         static int s_ufDiag = 0;
         if (s_ufDiag++ < 2) {
-            LOG_INFO("[uf-diag]", "pWF=%p pCam=%p fovAddr=%p enabled=%d",
+            LOG_DEBUG("uf-diag", "pWF=%p pCam=%p fovAddr=%p enabled=%d",
                 (void*)pWF, (void*)pCam,
                 (void*)(pCam + wow::Camera_FOV_Off), enabled);
         }
     }
+#endif
 
     if (enabled) {
         float pf = CVar_GetFloat("paniniFov", 0.0f);

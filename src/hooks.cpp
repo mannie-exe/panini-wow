@@ -107,16 +107,18 @@ static void ApplyPaniniPass(IDirect3DDevice9* dev) {
     if (zoom != zoom || zoom < 0.01f || zoom > 10.0f)
         zoom = 1.273f;
 
+#ifdef PANINI_DEBUG_LOG
     {
         static int s_diag = 0;
         if (s_diag++ < 1) {
             float swFov = CVar_GetFloat("FoV", 0.0f);
-            LOG_INFO("[diag]", "swFov=%08X fov=%08X htan=%08X zoom=%08X D=%08X fill=%08X asp=%08X",
+            LOG_DEBUG("diag", "swFov=%08X fov=%08X htan=%08X zoom=%08X D=%08X fill=%08X asp=%08X",
                 FloatBits(swFov), FloatBits(fov), FloatBits(halfTan),
                 FloatBits(zoom), FloatBits(cfg.strength), FloatBits(cfg.fill),
                 FloatBits(aspect));
         }
     }
+#endif
 
     float c0[4] = { cfg.strength, halfTan, zoom, 1.0f };
     float c1[4] = { cfg.verticalComp, aspect, 0.0f, 0.0f };
