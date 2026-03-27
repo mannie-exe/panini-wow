@@ -15,6 +15,9 @@ local defaults = {
     fov = 2.6,
 }
 
+PaniniClassicWoW = PaniniClassicWoW or {}
+PaniniClassicWoW.defaults = defaults
+
 local frame = CreateFrame("Frame", "PaniniClassicWoWFrame", UIParent)
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -91,6 +94,11 @@ local function DisablePanini()
     fovTrackSuppress = 1
 end
 
+PaniniClassicWoW.SafeSetCVar = SafeSetCVar
+PaniniClassicWoW.SafeGetCVar = SafeGetCVar
+PaniniClassicWoW.EnablePanini = EnablePanini
+PaniniClassicWoW.DisablePanini = DisablePanini
+
 frame:SetScript("OnEvent", function()
     if event == "ADDON_LOADED" and arg1 == "PaniniClassicWoW" then
         if not PaniniClassicWoW_Config then
@@ -134,11 +142,14 @@ SlashCmdList["PANINI"] = function(msg)
         table.insert(args, word)
     end
 
-    local cmd = args[1] or "help"
+    local cmd = args[1] or ""
     local val = args[2]
     local c = PaniniClassicWoW_Config
 
-    if cmd == "toggle" then
+    if cmd == "" or cmd == "settings" or cmd == "config" or cmd == "open" then
+        PaniniClassicWoW_ToggleSettings()
+        return
+    elseif cmd == "toggle" then
         if c.enabled then
             DisablePanini()
             DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r disabled")
@@ -310,8 +321,11 @@ SlashCmdList["PANINI"] = function(msg)
         local fov = SafeGetCVar("FoV")
         DEFAULT_CHAT_FRAME:AddMessage("  FoV CVar: " .. tostring(fov))
 
-    else
+    elseif cmd == "help" then
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPaniniClassicWoW|r commands:")
+        DEFAULT_CHAT_FRAME:AddMessage("  /panini               open settings")
+        DEFAULT_CHAT_FRAME:AddMessage("  /panini settings      open settings")
+        DEFAULT_CHAT_FRAME:AddMessage("  /panini help          show this help")
         DEFAULT_CHAT_FRAME:AddMessage("  /panini toggle        toggle on/off")
         DEFAULT_CHAT_FRAME:AddMessage("  /panini on|off        enable/disable")
         DEFAULT_CHAT_FRAME:AddMessage("  /panini reset         reset to defaults")
