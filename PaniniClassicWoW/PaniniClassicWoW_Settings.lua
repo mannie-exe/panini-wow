@@ -333,7 +333,7 @@ dialog:SetScript("OnShow", PaniniSettingsDialog_OnShow)
 -- Public open/close toggle
 -- ============================================================
 
-function PaniniClassicWoW_ToggleSettings()
+function PaniniClassicWoW.ToggleSettings()
     if dialog:IsShown() then
         dialog:Hide()
     else
@@ -349,5 +349,5 @@ local ioPanel = CreateFrame("Frame", "PaniniSettingsIOPanel", UIParent)
 ioPanel.name = "Panini Projection"
 InterfaceOptions_AddCategory(ioPanel)
 ioPanel:SetScript("OnShow", function()
-    dialog:Show()
+    PaniniClassicWoW.ToggleSettings()
 end)

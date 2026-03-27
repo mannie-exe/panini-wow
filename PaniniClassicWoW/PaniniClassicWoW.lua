@@ -98,6 +98,7 @@ PaniniClassicWoW.SafeSetCVar = SafeSetCVar
 PaniniClassicWoW.SafeGetCVar = SafeGetCVar
 PaniniClassicWoW.EnablePanini = EnablePanini
 PaniniClassicWoW.DisablePanini = DisablePanini
+PaniniClassicWoW.ToggleSettings = function() end
 
 frame:SetScript("OnEvent", function()
     if event == "ADDON_LOADED" and arg1 == "PaniniClassicWoW" then
@@ -147,7 +148,7 @@ SlashCmdList["PANINI"] = function(msg)
     local c = PaniniClassicWoW_Config
 
     if cmd == "" or cmd == "settings" or cmd == "config" or cmd == "open" then
-        PaniniClassicWoW_ToggleSettings()
+        PaniniClassicWoW.ToggleSettings()
         return
     elseif cmd == "toggle" then
         if c.enabled then
