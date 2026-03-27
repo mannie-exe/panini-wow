@@ -13,16 +13,25 @@ static IDirect3DPixelShader9* g_pDebugShader   = nullptr;
 static bool                   g_resourcesReady = false;
 static UINT                   g_bbW = 0;
 static UINT                   g_bbH = 0;
+static IDirect3DTexture9*     g_pHiresTexture  = nullptr;
+static IDirect3DSurface9*     g_pHiresSurface  = nullptr;
+static UINT                   g_hiW = 0;
+static UINT                   g_hiH = 0;
+static float                  g_lastScale = 0.0f;
 
 struct ScreenVertex { float x, y, z, rhw, u, v; };
 
 static void ReleaseResources() {
+    if (g_pHiresSurface) { g_pHiresSurface->Release(); g_pHiresSurface = nullptr; }
+    if (g_pHiresTexture) { g_pHiresTexture->Release(); g_pHiresTexture = nullptr; }
     if (g_pSceneSurface) { g_pSceneSurface->Release(); g_pSceneSurface = nullptr; }
     if (g_pSceneTexture) { g_pSceneTexture->Release(); g_pSceneTexture = nullptr; }
     if (g_pPaniniShader) { g_pPaniniShader->Release(); g_pPaniniShader = nullptr; }
     if (g_pDebugShader)  { g_pDebugShader->Release();  g_pDebugShader  = nullptr; }
     g_resourcesReady = false;
     g_bbW = g_bbH = 0;
+    g_hiW = g_hiH = 0;
+    g_lastScale = 0.0f;
 }
 
 static bool CreateResources(IDirect3DDevice9* dev) {
@@ -63,6 +72,28 @@ static bool CreateResources(IDirect3DDevice9* dev) {
         return false;
     }
 
+    float ss = CVar_GetFloat("paniniSuperSample", 1.0f);
+    if (ss > 2.0f) ss = 2.0f;
+    g_lastScale = ss;
+
+    if (ss > 1.0f) {
+        g_hiW = static_cast<UINT>(ceilf(static_cast<float>(desc.Width) * ss));
+        g_hiH = static_cast<UINT>(ceilf(static_cast<float>(desc.Height) * ss));
+
+        hr = dev->CreateTexture(
+            g_hiW, g_hiH, 1,
+            D3DUSAGE_RENDERTARGET, desc.Format,
+            D3DPOOL_DEFAULT, &g_pHiresTexture, NULL);
+        if (FAILED(hr)) {
+            LOG_INFO("hook", "CreateTexture(hires) failed hr=0x%08X", (unsigned)hr);
+            ReleaseResources();
+            return false;
+        }
+        g_pHiresTexture->GetSurfaceLevel(0, &g_pHiresSurface);
+
+        LOG_INFO("hook", "hires target: %ux%u scale=%08X", g_hiW, g_hiH, FloatBits(ss));
+    }
+
     LOG_INFO("hook", "resources ready: %ux%u fmt=%u", desc.Width, desc.Height, desc.Format);
     g_resourcesReady = true;
     return true;
@@ -90,6 +121,19 @@ static void ApplyPaniniPass(IDirect3DDevice9* dev) {
     D3DSURFACE_DESC bbDesc;
     pBB->GetDesc(&bbDesc);
     if (bbDesc.Width != g_bbW || bbDesc.Height != g_bbH) {
+        pBB->Release();
+        ReleaseResources();
+        if (!CreateResources(dev))
+            return;
+        dev->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBB);
+        if (!pBB) return;
+    }
+
+    float curScale = CVar_GetFloat("paniniSuperSample", 1.0f);
+    if (curScale > 2.0f) curScale = 2.0f;
+    if (curScale < 1.0f) curScale = 1.0f;
+    if (g_resourcesReady &&
+        (curScale - g_lastScale > 0.001f || g_lastScale - curScale > 0.001f)) {
         pBB->Release();
         ReleaseResources();
         if (!CreateResources(dev))
@@ -128,8 +172,6 @@ static void ApplyPaniniPass(IDirect3DDevice9* dev) {
 
     dev->StretchRect(pBB, NULL, g_pSceneSurface, NULL, D3DTEXF_NONE);
 
-    dev->SetRenderTarget(0, pBB);
-    dev->SetTexture(0, g_pSceneTexture);
     dev->SetPixelShader(activeShader);
     dev->SetVertexShader(NULL);
     dev->SetPixelShaderConstantF(0, c0, 1);
@@ -154,17 +196,42 @@ static void ApplyPaniniPass(IDirect3DDevice9* dev) {
     dev->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
     dev->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
 
-    float w = static_cast<float>(g_bbW);
-    float h = static_cast<float>(g_bbH);
-    ScreenVertex quad[4] = {
-        { -0.5f,     -0.5f,     0.0f, 1.0f, 0.0f, 0.0f },
-        {  w - 0.5f, -0.5f,     0.0f, 1.0f, 1.0f, 0.0f },
-        { -0.5f,      h - 0.5f, 0.0f, 1.0f, 0.0f, 1.0f },
-        {  w - 0.5f,  h - 0.5f, 0.0f, 1.0f, 1.0f, 1.0f },
-    };
-
+    dev->SetTexture(0, g_pSceneTexture);
     dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1);
-    dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(ScreenVertex));
+
+    if (g_pHiresSurface) {
+        float hiAspect = (g_hiH > 0) ? static_cast<float>(g_hiW) / static_cast<float>(g_hiH) : aspect;
+        float c1hi[4] = { cfg.verticalComp, hiAspect, 0.0f, 0.0f };
+
+        dev->StretchRect(g_pSceneSurface, NULL, g_pHiresSurface, NULL, D3DTEXF_LINEAR);
+        dev->SetRenderTarget(0, g_pHiresSurface);
+        dev->SetPixelShaderConstantF(1, c1hi, 1);
+
+        float w = static_cast<float>(g_hiW);
+        float h = static_cast<float>(g_hiH);
+        ScreenVertex quad[4] = {
+            { -0.5f,     -0.5f,     0.0f, 1.0f, 0.0f, 0.0f },
+            {  w - 0.5f, -0.5f,     0.0f, 1.0f, 1.0f, 0.0f },
+            { -0.5f,      h - 0.5f, 0.0f, 1.0f, 0.0f, 1.0f },
+            {  w - 0.5f,  h - 0.5f, 0.0f, 1.0f, 1.0f, 1.0f },
+        };
+        dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(ScreenVertex));
+
+        dev->SetRenderTarget(0, pBB);
+        dev->StretchRect(g_pHiresSurface, NULL, pBB, NULL, D3DTEXF_LINEAR);
+    } else {
+        dev->SetRenderTarget(0, pBB);
+
+        float w = static_cast<float>(g_bbW);
+        float h = static_cast<float>(g_bbH);
+        ScreenVertex quad[4] = {
+            { -0.5f,     -0.5f,     0.0f, 1.0f, 0.0f, 0.0f },
+            {  w - 0.5f, -0.5f,     0.0f, 1.0f, 1.0f, 0.0f },
+            { -0.5f,      h - 0.5f, 0.0f, 1.0f, 0.0f, 1.0f },
+            {  w - 0.5f,  h - 0.5f, 0.0f, 1.0f, 1.0f, 1.0f },
+        };
+        dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(ScreenVertex));
+    }
 
     RestoreD3D9State(dev, &saved);
     pBB->Release();

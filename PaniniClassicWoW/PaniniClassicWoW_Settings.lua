@@ -1,7 +1,7 @@
 if PaniniClassicWoW == nil then return end
 
 local DIALOG_W = 400
-local DIALOG_H = 440
+local DIALOG_H = 500
 local SLIDER_W = 280
 local SLIDER_H = 16
 local EDITBOX_W = 58
@@ -240,6 +240,15 @@ local sFov = CreateSlider(pageSettings, "PaniniSettingsFov",
 )
 sFov:SetPoint("TOPLEFT", 20, y)
 
+y = y - 60
+
+local sSS = CreateSlider(pageSettings, "PaniniSettingsSuperSample",
+    "Super Sample", "1.0", "2.0", 1.0, 2.0,
+    "superSample", "paniniSuperSample",
+    { decimals = 2 }
+)
+sSS:SetPoint("TOPLEFT", 20, y)
+
 local pageDebug = CreateFrame("Frame", "PaniniSettingsPageDebug", tabPageContainer)
 pageDebug:SetAllPoints(tabPageContainer)
 pageDebug:Hide()
@@ -350,6 +359,7 @@ function PaniniSettingsDialog_OnShow()
     sVert:SetValue(c.verticalComp or 0)
     sFill:SetValue(c.fill or 1.0)
     sFov:SetValue(c.fov or 2.6565)
+    sSS:SetValue(c.superSample or 1.0)
 
     local tintVal = SafeGetCVar("paniniDebugTint")
     cbTint:SetChecked(tintVal == "1" and 1 or nil)

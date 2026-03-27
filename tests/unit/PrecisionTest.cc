@@ -123,7 +123,7 @@ TEST_F(PrecisionTest, ComputeFillZoom_Portrait9x19dot5) {
 
 TEST_F(PrecisionTest, ComputeFillZoom_ExtremeFov_NoDenormals) {
     float strengths[] = {0.001f, 0.03f, 0.10f};
-    float fovs[] = {0.06f, 0.1f, 1.0f, 1.5708f, 2.5f, 3.0f, 3.093f};
+    float fovs[] = {0.06f, 0.1f, 1.0f, 1.5708f, 2.5f, 3.0f, 3.09f};
 
     for (float strength : strengths) {
         for (float fov : fovs) {

@@ -21,6 +21,7 @@ void CVar_RegisterAll() {
     char n6[] = "paniniDebugUV";
     char n7[] = "paniniFov";
     char n8[] = "paniniUserFov";
+    char n9[] = "paniniSuperSample";
 
     CVarRegister(n1, nullptr, 0, "0",      nullptr, 5, 0, 0);
     CVarRegister(n2, nullptr, 0, "0.0333", nullptr, 5, 0, 0);
@@ -30,8 +31,9 @@ void CVar_RegisterAll() {
     CVarRegister(n6, nullptr, 0, "0",      nullptr, 5, 0, 0);
     CVarRegister(n7, nullptr, 0, "2.6",    nullptr, 5, 0, 0);
     CVarRegister(n8, nullptr, 0, "-1",     nullptr, 5, 0, 0);
+    CVarRegister(n9, nullptr, 0, "1.0",    nullptr, 5, 0, 0);
 
-    LOG_INFO("cvar", "registered 8 CVars");
+    LOG_INFO("cvar", "registered 9 CVars");
 }
 
 float CVar_GetFloat(const char* name, float fallback) {
