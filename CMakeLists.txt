@@ -31,18 +31,48 @@ compile_hlsl(
     VARNAME  g_paniniShaderBytecode
 )
 
-set(DEBUG_SHADER_HEADER "${CMAKE_BINARY_DIR}/generated/debug_shader.h")
+set(TINT_SHADER_HEADER "${CMAKE_BINARY_DIR}/generated/tint_shader.h")
 
 compile_hlsl(
-    SOURCE   "${CMAKE_SOURCE_DIR}/shaders/debug.hlsl"
-    OUTPUT   "${DEBUG_SHADER_HEADER}"
+    SOURCE   "${CMAKE_SOURCE_DIR}/shaders/tint.hlsl"
+    OUTPUT   "${TINT_SHADER_HEADER}"
     ENTRY    main
     PROFILE  ps_3_0
-    VARNAME  g_debugShaderBytecode
+    VARNAME  g_tintShaderBytecode
+)
+
+set(UV_VIS_SHADER_HEADER "${CMAKE_BINARY_DIR}/generated/uv_vis_shader.h")
+
+compile_hlsl(
+    SOURCE   "${CMAKE_SOURCE_DIR}/shaders/uv_vis.hlsl"
+    OUTPUT   "${UV_VIS_SHADER_HEADER}"
+    ENTRY    main
+    PROFILE  ps_3_0
+    VARNAME  g_uvVisShaderBytecode
+)
+
+set(CAS_SHADER_HEADER "${CMAKE_BINARY_DIR}/generated/cas_shader.h")
+
+compile_hlsl(
+    SOURCE   "${CMAKE_SOURCE_DIR}/shaders/cas.hlsl"
+    OUTPUT   "${CAS_SHADER_HEADER}"
+    ENTRY    main
+    PROFILE  ps_3_0
+    VARNAME  g_casShaderBytecode
+)
+
+set(FXAA_SHADER_HEADER "${CMAKE_BINARY_DIR}/generated/fxaa_shader.h")
+
+compile_hlsl(
+    SOURCE   "${CMAKE_SOURCE_DIR}/shaders/fxaa.hlsl"
+    OUTPUT   "${FXAA_SHADER_HEADER}"
+    ENTRY    main
+    PROFILE  ps_3_0
+    VARNAME  g_fxaaShaderBytecode
 )
 
 # Custom target so we can build shaders independently: cmake --build build --target shaders
-add_custom_target(shaders DEPENDS "${PANINI_SHADER_HEADER}" "${DEBUG_SHADER_HEADER}")
+add_custom_target(shaders DEPENDS "${PANINI_SHADER_HEADER}" "${TINT_SHADER_HEADER}" "${UV_VIS_SHADER_HEADER}" "${CAS_SHADER_HEADER}" "${FXAA_SHADER_HEADER}")
 
 #------------------------------------------------------------------------------
 # PaniniWoW DLL
@@ -62,7 +92,7 @@ target_include_directories(PaniniWoW PRIVATE
 )
 
 # Shader bytecode headers are generated dependencies
-target_sources(PaniniWoW PRIVATE "${PANINI_SHADER_HEADER}" "${DEBUG_SHADER_HEADER}")
+target_sources(PaniniWoW PRIVATE "${PANINI_SHADER_HEADER}" "${TINT_SHADER_HEADER}" "${UV_VIS_SHADER_HEADER}" "${CAS_SHADER_HEADER}" "${FXAA_SHADER_HEADER}")
 add_dependencies(PaniniWoW shaders)
 
 option(PANINI_DEBUG_LOG "Enable debug logging (LOG_DEBUG calls)" OFF)
@@ -126,11 +156,12 @@ if(PANINI_BUILD_TESTS)
     target_link_libraries(PaniniTests PRIVATE
         GTest::gtest
         GTest::gmock
+        -static
     )
     target_include_directories(PaniniTests PRIVATE
         "${PROJECT_SOURCE_DIR}/include"
     )
     add_subdirectory(tests)
     include(GoogleTest)
-    gtest_discover_tests(PaniniTests)
+    gtest_discover_tests(PaniniTests DISCOVERY_MODE PRE_TEST DISCOVERY_TIMEOUT 30)
 endif()

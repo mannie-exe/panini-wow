@@ -38,7 +38,8 @@
         },
         {
             "name": "test-native",
-            "displayName": "Native tests (host compiler)",
+            "hidden": true,
+            "displayName": "Unused: tests require windows.h (use cross presets + Wine)",
             "inherits": "base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",

@@ -6,19 +6,19 @@
 // ---------------------------------------------------------------------------
 // This file tests runtime robustness properties of the panini config pipeline.
 //
-// The clamping logic in hooks.cpp ApplyPaniniPass is:
+// The clamping logic in hooks.cpp ApplyPostProcess is:
 //   strength:     NaN -> 0.5,  <0 -> 0.5,  >1 -> 1
 //   verticalComp: NaN -> 0.0,  <-1 -> -1,  >1 -> 1
 //   fill:         NaN -> 0.8,  <0 -> 0.8,  >1 -> 1
 //
-// The zoom safety check in ApplyPaniniPass is:
+// The zoom safety check in ApplyPostProcess is:
 //   NaN or <0.01 or >10 -> fallback to 1.273
 //
-// PaniniConfig_ReadFromCVars in cvar.cpp reads raw CVar values with fallbacks.
+// PostProcessConfig_ReadFromCVars in cvar.cpp reads raw CVar values with fallbacks.
 // UpdateCameraFov in state.cpp manages FOV swap: enable saves user FOV, disable restores.
 // ---------------------------------------------------------------------------
 
-// Mirrors the clamping logic from hooks.cpp ApplyPaniniPass lines 75-81.
+// Mirrors the clamping logic from hooks.cpp ApplyPostProcess lines 75-81.
 struct ClampedConfig {
     float strength;
     float verticalComp;

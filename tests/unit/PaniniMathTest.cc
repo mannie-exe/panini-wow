@@ -119,3 +119,4 @@ TEST_F(PaniniMathTest, IsValidFov_NaN) {
 TEST_F(PaniniMathTest, IsValidFov_Inf) {
     EXPECT_FALSE(IsValidFov(std::numeric_limits<float>::infinity()));
 }
+

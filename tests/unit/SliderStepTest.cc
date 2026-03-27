@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <cmath>
 
 // Lua slider math validation (C++ equivalent).
 // From PaniniClassicWoW_Settings.lua:

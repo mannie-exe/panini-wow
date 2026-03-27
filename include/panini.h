@@ -30,16 +30,18 @@ void  CVar_RegisterAll();
 float CVar_GetFloat(const char* name, float fallback);
 int   CVar_GetInt(const char* name, int fallback);
 
-struct PaniniConfig {
-    bool  enabled;
+struct PostProcessConfig {
+    bool  paniniEnabled;
     float strength;
     float verticalComp;
     float fill;
+    bool  fxaaEnabled;
+    float sharpen;
     bool  debugTint;
     bool  debugUV;
 };
 
-void PaniniConfig_ReadFromCVars(PaniniConfig* cfg);
+void PostProcessConfig_ReadFromCVars(PostProcessConfig* cfg);
 
 void  LogInit();
 void  LogShutdown();

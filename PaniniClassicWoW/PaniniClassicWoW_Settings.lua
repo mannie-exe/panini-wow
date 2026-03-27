@@ -1,7 +1,7 @@
 if PaniniClassicWoW == nil then return end
 
 local DIALOG_W = 400
-local DIALOG_H = 500
+local DIALOG_H = 455
 local SLIDER_W = 280
 local SLIDER_H = 16
 local EDITBOX_W = 58
@@ -48,7 +48,7 @@ local function CreateSlider(parent, name, labelText, lowText, highText, minVal, 
     local decimals = opts.decimals or 4
     local customOnChange = opts.onValueChanged
 
-    local step = (maxVal - minVal) / STEP_DIVISOR
+    local step = opts.step or ((maxVal - minVal) / STEP_DIVISOR)
     local slider = CreateFrame("Slider", name, parent, "OptionsSliderTemplate")
     slider:SetMinMaxValues(minVal, maxVal)
     slider:SetValueStep(step)
@@ -151,6 +151,10 @@ dialog:SetBackdrop({
 })
 dialog:SetBackdropColor(0, 0, 0, 0.85)
 dialog:EnableMouse(true)
+dialog:SetMovable(true)
+dialog:RegisterForDrag("LeftButton")
+dialog:SetScript("OnDragStart", function() this:StartMoving() end)
+dialog:SetScript("OnDragStop", function() this:StopMovingOrSizing() end)
 dialog:RegisterEvent("PLAYER_REGEN_DISABLED")
 dialog:SetScript("OnEvent", function()
     if event == "PLAYER_REGEN_DISABLED" and dialog:IsShown() then
@@ -242,12 +246,32 @@ sFov:SetPoint("TOPLEFT", 20, y)
 
 y = y - 60
 
-local sSS = CreateSlider(pageSettings, "PaniniSettingsSuperSample",
-    "Super Sample", "1.0", "2.0", 1.0, 2.0,
-    "superSample", "paniniSuperSample",
+local cbFxaa = CreateCheckbox(pageSettings, "PaniniSettingsFxaa",
+    "FXAA",
+    "Fast approximate anti-aliasing",
+    function()
+        local c = GetConfig()
+        if this:GetChecked() then
+            c.fxaaEnabled = true
+            SafeSetCVar("ppFxaa", "1")
+        else
+            c.fxaaEnabled = false
+            SafeSetCVar("ppFxaa", "0")
+        end
+    end
+)
+cbFxaa:SetPoint("TOPLEFT", 10, y)
+
+y = y - 35
+
+local sSharpen = CreateSlider(pageSettings, "PaniniSettingsSharpen",
+    "Sharpen", "0", "1", 0, 1,
+    "sharpen", "ppSharpen",
     { decimals = 2 }
 )
-sSS:SetPoint("TOPLEFT", 20, y)
+sSharpen:SetPoint("TOPLEFT", 20, y)
+
+y = y - 60
 
 local pageDebug = CreateFrame("Frame", "PaniniSettingsPageDebug", tabPageContainer)
 pageDebug:SetAllPoints(tabPageContainer)
@@ -258,13 +282,7 @@ local y2 = -5
 local cbTint = CreateCheckbox(pageDebug, "PaniniSettingsDebugTint",
     "Debug Tint (red -33%)",
     "Visualize panini effect with red channel reduction",
-    function()
-        if this:GetChecked() then
-            SafeSetCVar("paniniDebugTint", "1")
-        else
-            SafeSetCVar("paniniDebugTint", "0")
-        end
-    end
+    function() end
 )
 cbTint:SetPoint("TOPLEFT", 10, y2)
 
@@ -273,15 +291,29 @@ y2 = y2 - 35
 local cbUV = CreateCheckbox(pageDebug, "PaniniSettingsDebugUV",
     "Debug UV Visualization",
     "Show UV coordinate visualization",
-    function()
-        if this:GetChecked() then
-            SafeSetCVar("paniniDebugUV", "1")
-        else
-            SafeSetCVar("paniniDebugUV", "0")
-        end
-    end
+    function() end
 )
 cbUV:SetPoint("TOPLEFT", 10, y2)
+
+cbTint:SetScript("OnClick", function()
+    if this:GetChecked() then
+        SafeSetCVar("ppDebugTint", "1")
+        SafeSetCVar("ppDebugUV", "0")
+        cbUV:SetChecked(nil)
+    else
+        SafeSetCVar("ppDebugTint", "0")
+    end
+end)
+
+cbUV:SetScript("OnClick", function()
+    if this:GetChecked() then
+        SafeSetCVar("ppDebugUV", "1")
+        SafeSetCVar("ppDebugTint", "0")
+        cbTint:SetChecked(nil)
+    else
+        SafeSetCVar("ppDebugUV", "0")
+    end
+end)
 
 y2 = y2 - 50
 
@@ -290,7 +322,7 @@ SetSize(btnReset, 130, 24)
 btnReset:SetPoint("TOPLEFT", 20, y2)
 btnReset:SetText("Reset Defaults")
 btnReset:SetScript("OnClick", function()
-    SlashCmdList["PANINI"]("reset")
+    SlashCmdList["PANINI"]("reset settings")
     PaniniSettingsDialog_OnShow()
 end)
 
@@ -355,33 +387,32 @@ function PaniniSettingsDialog_OnShow()
     local c = GetConfig()
 
     cbEnabled:SetChecked(c.enabled and 1 or nil)
-    sStrength:SetValue(c.strength or 0.0285)
+    sStrength:SetValue(c.strength or 0.01)
     sVert:SetValue(c.verticalComp or 0)
     sFill:SetValue(c.fill or 1.0)
-    sFov:SetValue(c.fov or 2.6565)
-    sSS:SetValue(c.superSample or 1.0)
+    sFov:SetValue(c.fov or 2.82)
+    cbFxaa:SetChecked(c.fxaaEnabled and 1 or nil)
+    sSharpen:SetValue(c.sharpen or 0.2)
 
-    local tintVal = SafeGetCVar("paniniDebugTint")
+    local tintVal = SafeGetCVar("ppDebugTint")
     cbTint:SetChecked(tintVal == "1" and 1 or nil)
 
-    local uvVal = SafeGetCVar("paniniDebugUV")
+    local uvVal = SafeGetCVar("ppDebugUV")
     cbUV:SetChecked(uvVal == "1" and 1 or nil)
 end
 
 dialog:SetScript("OnShow", PaniniSettingsDialog_OnShow)
 
+function PaniniClassicWoW.ResetDialogPosition()
+    dialog:ClearAllPoints()
+    dialog:SetPoint("CENTER", UIParent, "CENTER")
+end
+
 function PaniniClassicWoW.ToggleSettings()
-    local dlg = getglobal("PaniniSettingsDialog")
-    if not dlg then
-        DEFAULT_CHAT_FRAME:AddMessage("|cffff0000Panini|r dialog frame not found (Settings file may not have loaded)")
-        return
-    end
-    if dlg:IsShown() then
-        dlg:Hide()
+    if dialog:IsShown() then
+        dialog:Hide()
     else
-        dlg:ClearAllPoints()
-        dlg:SetPoint("CENTER", UIParent, "CENTER")
-        dlg:Show()
+        dialog:Show()
     end
 end
 
