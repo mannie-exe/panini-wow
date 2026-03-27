@@ -76,12 +76,16 @@ end
 
 local function EnablePanini()
     local c = PaniniClassicWoW_Config
+    local currentFov = tonumber(SafeGetCVar("FoV"))
+    if currentFov and currentFov > 0 then
+        SetUserFov(currentFov)
+    end
     c.enabled = true
     local pf = c.fov or 2.6
     SafeSetCVar("FoV", tostring(pf))
     SafeSetCVar("paniniEnabled", "1")
     lastKnownFov = pf
-    fovTrackSuppress = 1
+    fovTrackSuppress = 3
 end
 
 local function DisablePanini()
@@ -91,7 +95,7 @@ local function DisablePanini()
     SafeSetCVar("FoV", tostring(uf))
     SafeSetCVar("paniniEnabled", "0")
     lastKnownFov = uf
-    fovTrackSuppress = 1
+    fovTrackSuppress = 3
 end
 
 PaniniClassicWoW.SafeSetCVar = SafeSetCVar
@@ -222,7 +226,7 @@ SlashCmdList["PANINI"] = function(msg)
                 if c.enabled then
                     SafeSetCVar("FoV", tostring(n))
                     lastKnownFov = n
-                    fovTrackSuppress = 1
+                    fovTrackSuppress = 3
                 end
                 DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r fov: " .. n)
             else
@@ -275,7 +279,7 @@ SlashCmdList["PANINI"] = function(msg)
         if PaniniClassicWoW_Config.enabled then
             SafeSetCVar("FoV", tostring(PaniniClassicWoW_Config.fov))
             lastKnownFov = PaniniClassicWoW_Config.fov
-            fovTrackSuppress = 1
+            fovTrackSuppress = 3
         end
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r reset to defaults (enabled, strength=0.0285, vertical=0, fill=1.0, fov=2.6565)")
 

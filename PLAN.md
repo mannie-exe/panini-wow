@@ -71,6 +71,7 @@ UpdateCameraFov() writes camera+0x40 directly from RenderWorld hook (before 3D r
 
 - **MinGW printf float bug**: `%f` displays all floats as `inf` under Wine. Workaround: `FloatBits()` + `%08X`. Display-only, does not affect runtime values.
 - **One-frame FoV mismatch on toggle**: `SetCVar("FoV", v)` updates CVar but not CGCamera's dirty flag. UpdateCameraFov compensates by writing camera+0x40 directly before 3D render.
+- **Saved FoV corruption on toggle [BUG]**: `fovTrackSuppress=1` in EnablePanini/DisablePanini is a race condition. `SetCVar("FoV", v)` may not propagate to `GetCVar("FoV")` within one frame, causing OnUpdate tracker to save stale FoV as userFov. Fix: save userFov BEFORE changing FoV, increase suppress count, or use flag-based approach.
 
 ## v2 Tasks
 
@@ -114,3 +115,6 @@ Replaced research doc with version-verified reference. Blind audit performed: 26
 - 2026-03-26: FoV swap system via paniniFov/paniniUserFov CVars + direct camera+0x40 write [atlas]
 - 2026-03-26: Settings GUI completed - notch marks, EditBox with bidirectional binding, dialog widened to 400px [atlas]
 - 2026-03-26: Inline asm crash fix — added "ecx" to clobber list to prevent register allocation collision [atlas]
+- 2026-03-26: Login gray flash fix - defer D3D resource creation until IsWorldActive() in EndScene [atlas]
+- 2026-03-26: GTest framework added - 62 tests across 4 suites (math, projection, config, slider) [integrator]
+- 2026-03-27: Saved FoV corruption identified - fovTrackSuppress race condition in EnablePanini/DisablePanini [atlas]

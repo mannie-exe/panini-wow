@@ -111,3 +111,26 @@ install(TARGETS PaniniWoW
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/PaniniClassicWoW/"
     DESTINATION addons/PaniniClassicWoW
 )
+
+#------------------------------------------------------------------------------
+# Tests (native, no cross-compilation)
+#------------------------------------------------------------------------------
+option(PANINI_BUILD_TESTS "Build PaniniWoW tests" ON)
+
+if(PANINI_BUILD_TESTS)
+    include(cmake/CPM.cmake)
+    include(PaniniGoogleTest)
+
+    enable_testing()
+    add_executable(PaniniTests tests/TestMain.cc)
+    target_link_libraries(PaniniTests PRIVATE
+        GTest::gtest
+        GTest::gmock
+    )
+    target_include_directories(PaniniTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/include"
+    )
+    add_subdirectory(tests)
+    include(GoogleTest)
+    gtest_discover_tests(PaniniTests)
+endif()

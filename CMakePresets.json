@@ -35,6 +35,15 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
             }
+        },
+        {
+            "name": "test-native",
+            "displayName": "Native tests (host compiler)",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "PANINI_BUILD_TESTS": "ON"
+            }
         }
     ],
     "buildPresets": [

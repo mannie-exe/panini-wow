@@ -55,7 +55,8 @@ void   Hooked_RenderWorld();
 
 void InstallRenderWorldHook();
 
-float ComputeFillZoom(float strength, float halfTanFov, float aspect, float fill);
+#include "panini_math.h"
+
 float ReadCameraFov();
 float ReadCameraAspect();
 IDirect3DDevice9* GetWoWDevice();
