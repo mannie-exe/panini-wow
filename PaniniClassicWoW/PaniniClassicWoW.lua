@@ -170,12 +170,12 @@ SlashCmdList["PANINI"] = function(msg)
     elseif cmd == "strength" or cmd == "s" then
         if val then
             local n = tonumber(val)
-            if n and n >= 0 and n <= 1 then
+            if n and n >= 0 and n <= 0.10 then
                 c.strength = n
                 SafeSetCVar("paniniStrength", tostring(n))
                 DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r strength: " .. n)
             else
-                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r strength must be 0.0 to 1.0")
+                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r strength must be 0.0 to 0.1")
             end
         else
             DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r strength: " .. c.strength)
@@ -275,6 +275,7 @@ SlashCmdList["PANINI"] = function(msg)
         end
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r reset to defaults (disabled, strength=0.0333, vertical=0, fill=1.0, fov=2.6)")
 
+
     elseif cmd == "status" then
         local tintVal = SafeGetCVar("paniniDebugTint") or "0"
         local uvVal = SafeGetCVar("paniniDebugUV") or "0"
@@ -331,7 +332,7 @@ SlashCmdList["PANINI"] = function(msg)
         DEFAULT_CHAT_FRAME:AddMessage("  /panini on|off        enable/disable")
         DEFAULT_CHAT_FRAME:AddMessage("  /panini reset         reset to defaults")
         DEFAULT_CHAT_FRAME:AddMessage("  /panini fov N         set panini FoV (0.1 to 3.14)")
-        DEFAULT_CHAT_FRAME:AddMessage("  /panini strength N    set strength (0 to 1)")
+        DEFAULT_CHAT_FRAME:AddMessage("  /panini strength N    set strength (0 to 0.1)")
         DEFAULT_CHAT_FRAME:AddMessage("  /panini vertical N    set vertical comp (-1 to 1)")
         DEFAULT_CHAT_FRAME:AddMessage("  /panini fill N        set fill zoom (0 to 1)")
         DEFAULT_CHAT_FRAME:AddMessage("  /panini debug         show debug state")
