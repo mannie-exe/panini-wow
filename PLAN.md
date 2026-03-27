@@ -75,12 +75,11 @@ UpdateCameraFov() writes camera+0x40 directly from RenderWorld hook (before 3D r
 ## v2 Tasks
 
 ### 1. Settings GUI (native WoW frame XML) [IN PROGRESS]
-In-game settings panel with tabbed layout (Settings + Debug pages). Implemented but blocked by WoW 1.12.1 Lua API incompatibilities — research doc contained TBC/WotLK API references. Fixed `SetSize` and `SetPoint` bare form. Diagnostic logging in place. Needs: proper 1.12.1 API verification pass (see blockers), then remove diagnostics and finalize.
+In-game settings panel with tabbed layout (Settings + Debug pages). All 1.12.1 API incompatibilities resolved: `SetSize` wrapper, `SetPoint` explicit form, `this` implicit self instead of `function(self)` params, `GetFontString():SetFontObject` instead of `SetNormalFontObject`, `InterfaceOptions_AddCategory` nil-guarded. 15-step slider intervals, strength range 0-0.1, no noisy UI interaction chat.
 
-**Blockers:**
-- Need version-verified WoW 1.12.1 Lua API reference — current research doc is untrusted (TBC contamination). Must rebuild from: TurtleWoW/SuperWoW source, real 1.12.1 addon codebases, vanilla wowpedia.
-- `InterfaceOptions_AddCategory` availability unknown — nil-guarded for now.
-- File has diagnostic `DEFAULT_CHAT_FRAME:AddMessage` calls throughout — remove once GUI is verified working.
+**Remaining:**
+- Slider notch marks (visual step indicators under/over slider)
+- EditBox per slider for manual value entry with bidirectional binding
 
 ### 2. Debug Shader Subcommands [DONE]
 `/panini debug tint` and `/panini debug uv` independently toggle each shader mode. CVars: `paniniDebugTint`, `paniniDebugUV`. Shader selection logic in ApplyPaniniPass chooses debug shader when either flag is set.
@@ -88,8 +87,8 @@ In-game settings panel with tabbed layout (Settings + Debug pages). Implemented 
 ### 3. Pattern Scanning for Addresses
 Replace hardcoded memory addresses (`0x0063DEC0`, `0x00B4B2BC`, `0x00482D70`, etc.) with byte-pattern scans of WoW `.text` section. Single `PatternScan(base, size, signature)` utility, then replace all `constexpr` addresses. Survives TurtleWoW binary updates.
 
-### 4. WoW 1.12.1 API Reference (NEW, BLOCKING v2.1)
-Rebuild the addon UI research doc from trusted 1.12.1-only sources. Key API calls to verify with version tags: `SetSize`, `SetPoint` forms, `SetBackdrop` table syntax, `SetNormalFontObject`, `InterfaceOptions_AddCategory`, `Frame`/`Button` metatable access, `CreateFrame` with template inheritance. Cross-reference against SuperWoW and pfUI source code.
+### 4. WoW 1.12.1 API Reference [DONE]
+Replaced research doc with version-verified reference. Blind audit performed: 26 claims checked, 3 wrong found. Key findings: `SetNormalFontObject`/`HighlightFontObject`/`DisabledFontObject` do not exist in 1.12.1; `this` is the implicit self in script handlers; `Ketho/wow-ui-source-vanilla` (primary cited source) returns 404. Addon code audited and fixed for all discovered issues.
 
 ## Research Reports
 
