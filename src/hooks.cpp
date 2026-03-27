@@ -199,17 +199,12 @@ void Hooked_RenderWorld() {
 }
 
 static IDirect3DDevice9* g_pDevice = nullptr;
-static bool g_firstEndScene = true;
 
 HRESULT __stdcall Hooked_EndScene(IDirect3DDevice9* dev) {
-    if (g_firstEndScene) {
-        LOG_INFO("hook", "EndScene first call: device=%p", dev);
-        g_firstEndScene = false;
-    }
-
     if (!g_resourcesReady) {
-        if (!CreateResources(dev))
-            return g_pOriginalEndScene(dev);
+        if (IsWorldActive() && CreateResources(dev)) {
+            LOG_INFO("hook", "EndScene: resources created after world active");
+        }
     }
 
     IDirect3DSurface9* pBB = nullptr;
@@ -220,7 +215,7 @@ HRESULT __stdcall Hooked_EndScene(IDirect3DDevice9* dev) {
         pBB->Release();
         if (bbDesc.Width != g_bbW || bbDesc.Height != g_bbH) {
             ReleaseResources();
-            CreateResources(dev);
+            if (IsWorldActive()) CreateResources(dev);
         }
     }
 
@@ -230,7 +225,6 @@ HRESULT __stdcall Hooked_EndScene(IDirect3DDevice9* dev) {
 HRESULT __stdcall Hooked_Reset(IDirect3DDevice9* dev, D3DPRESENT_PARAMETERS* pParams) {
     LOG_INFO("hook", "Reset called, releasing resources");
     ReleaseResources();
-    g_firstEndScene = true;
     return g_pOriginalReset(dev, pParams);
 }
 

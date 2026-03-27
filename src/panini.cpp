@@ -21,7 +21,7 @@ float ComputeFillZoom(float strength, float halfTanFov, float aspect, float fill
 }
 
 static inline bool IsValidFov(float f) {
-    return f > 0.05f && f < 3.5f && f == f;
+    return f > 0.05f && f < 3.094f && f == f;
 }
 
 float ReadCameraFov() {

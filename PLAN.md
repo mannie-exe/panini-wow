@@ -4,7 +4,7 @@ Panini projection post-process DLL for WoW 1.12.1 (TurtleWoW). Hooks CGWorldFram
 
 ## Current Status
 
-v1 feature-complete. All layers implemented and tested. Shader produces correct panini-warped output. FoV swap system allows seamless toggle without manual FOV management. Building under SSE2 eliminates x87 FPU precision issues entirely.
+v1 feature-complete. All layers implemented and tested. Shader produces correct panini-warped output. FoV swap system allows seamless toggle without manual FOV management. Building under SSE2 eliminates x87 FPU precision issues entirely. Settings GUI with slider notch marks and EditBox value entry complete.
 
 ## Runtime Dependencies
 
@@ -74,12 +74,8 @@ UpdateCameraFov() writes camera+0x40 directly from RenderWorld hook (before 3D r
 
 ## v2 Tasks
 
-### 1. Settings GUI (native WoW frame XML) [IN PROGRESS]
-In-game settings panel with tabbed layout (Settings + Debug pages). All 1.12.1 API incompatibilities resolved: `SetSize` wrapper, `SetPoint` explicit form, `this` implicit self instead of `function(self)` params, `GetFontString():SetFontObject` instead of `SetNormalFontObject`, `InterfaceOptions_AddCategory` nil-guarded. 15-step slider intervals, strength range 0-0.1, no noisy UI interaction chat.
-
-**Remaining:**
-- Slider notch marks (visual step indicators under/over slider)
-- EditBox per slider for manual value entry with bidirectional binding
+### 1. Settings GUI (native WoW frame XML) [DONE]
+In-game settings panel with tabbed layout (Settings + Debug pages). All 1.12.1 API incompatibilities resolved: `SetSize` wrapper, `SetPoint` explicit form, `this` implicit self instead of `function(self)` params, `GetFontString():SetFontObject` instead of `SetNormalFontObject`, `InterfaceOptions_AddCategory` nil-guarded. 15-step slider intervals, strength range 0-0.1, no noisy UI interaction chat. Slider notch marks (15 WHITE8X8 textures per slider, positioned at step intervals below track). EditBox per slider with bidirectional binding (type value, Enter to apply, Escape to revert, focus-loss validates and clamps). Dialog widened to 400px to accommodate EditBox right of each slider. FOV slider preserves dual CVar write (paniniFov + FoV when enabled) via opts.onValueChanged callback.
 
 ### 2. Debug Shader Subcommands [DONE]
 `/panini debug tint` and `/panini debug uv` independently toggle each shader mode. CVars: `paniniDebugTint`, `paniniDebugUV`. Shader selection logic in ApplyPaniniPass chooses debug shader when either flag is set.
@@ -116,4 +112,5 @@ Replaced research doc with version-verified reference. Blind audit performed: 26
 - 2026-03-26: ComputeFillZoom math verified correct via Python trace. Bug was runtime FPU, not algorithm [atlas]
 - 2026-03-26: ReadCameraFov changed to CVar-first priority (camera memory is stale between SetCVar and reload) [atlas]
 - 2026-03-26: FoV swap system via paniniFov/paniniUserFov CVars + direct camera+0x40 write [atlas]
+- 2026-03-26: Settings GUI completed - notch marks, EditBox with bidirectional binding, dialog widened to 400px [atlas]
 - 2026-03-26: Inline asm crash fix — added "ecx" to clobber list to prevent register allocation collision [atlas]

@@ -1,5 +1,12 @@
--- PaniniClassicWoW_Settings.lua
--- Standalone settings dialog with Settings and Debug tab pages.
+if PaniniClassicWoW == nil then return end
+
+local DIALOG_W = 400
+local DIALOG_H = 440
+local SLIDER_W = 280
+local SLIDER_H = 16
+local EDITBOX_W = 58
+local EDITBOX_H = 20
+local STEP_DIVISOR = 200
 
 local function SetSize(frame, w, h)
     frame:SetWidth(w)
@@ -26,11 +33,113 @@ local function DisablePanini()
     PaniniClassicWoW.DisablePanini()
 end
 
-local SLIDER_W = 280
-local SLIDER_H = 16
+local function FormatValue(value, decimals)
+    return string.format("%." .. (decimals or 4) .. "f", value)
+end
+
+local function Clamp(val, lo, hi)
+    if val < lo then return lo end
+    if val > hi then return hi end
+    return val
+end
+
+local function CreateSlider(parent, name, labelText, lowText, highText, minVal, maxVal, configKey, cvar, opts)
+    opts = opts or {}
+    local decimals = opts.decimals or 4
+    local customOnChange = opts.onValueChanged
+
+    local step = (maxVal - minVal) / STEP_DIVISOR
+    local slider = CreateFrame("Slider", name, parent, "OptionsSliderTemplate")
+    slider:SetMinMaxValues(minVal, maxVal)
+    slider:SetValueStep(step)
+    slider:SetWidth(SLIDER_W)
+    slider:SetHeight(SLIDER_H)
+
+    local textObj = getglobal(slider:GetName() .. "Text")
+    local lowObj = getglobal(slider:GetName() .. "Low")
+    local highObj = getglobal(slider:GetName() .. "High")
+    textObj:SetText(labelText)
+    lowObj:SetText(lowText)
+    highObj:SetText(highText)
+
+    local updatingFromEditBox = false
+    local eb = CreateFrame("EditBox", name .. "Input", parent)
+    SetSize(eb, EDITBOX_W, EDITBOX_H)
+    eb:SetPoint("LEFT", slider, "RIGHT", 8, -8)
+    eb:SetFont("Fonts\\FRIZQT__.TTF", 11)
+    eb:SetJustifyH("CENTER")
+    eb:SetMaxLetters(8)
+    eb:SetAutoFocus(false)
+    eb:SetText(FormatValue(minVal, decimals))
+    eb:SetTextColor(1, 1, 1)
+    eb:SetBackdrop({
+        bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true,
+        tileSize = 16,
+        edgeSize = 8,
+        insets = { left = 2, right = 2, top = 2, bottom = 2 }
+    })
+    eb:SetBackdropColor(0, 0, 0, 0.8)
+    eb:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+
+    local function ApplyEditBox()
+        local val = tonumber(eb:GetText())
+        if val then
+            val = Clamp(val, minVal, maxVal)
+            eb:SetText(FormatValue(val, decimals))
+            updatingFromEditBox = true
+            slider:SetValue(val)
+            updatingFromEditBox = false
+        else
+            eb:SetText(FormatValue(slider:GetValue(), decimals))
+        end
+    end
+
+    eb:SetScript("OnEnterPressed", function()
+        ApplyEditBox()
+        eb:ClearFocus()
+    end)
+
+    eb:SetScript("OnEscapePressed", function()
+        eb:SetText(FormatValue(slider:GetValue(), decimals))
+        eb:ClearFocus()
+        local dlg = getglobal("PaniniSettingsDialog")
+        if dlg and dlg:IsShown() then
+            dlg:Hide()
+        end
+    end)
+
+    eb:SetScript("OnEditFocusLost", function()
+        ApplyEditBox()
+    end)
+
+    slider:SetScript("OnValueChanged", function()
+        local value = this:GetValue()
+        local c = GetConfig()
+        c[configKey] = value
+        SafeSetCVar(cvar, tostring(value))
+        if not updatingFromEditBox then
+            eb:SetText(FormatValue(value, decimals))
+        end
+        if customOnChange then
+            customOnChange(value)
+        end
+    end)
+
+    return slider
+end
+
+local function CreateCheckbox(parent, name, labelText, tooltipText, onClick)
+    local cb = CreateFrame("CheckButton", name, parent, "OptionsCheckButtonTemplate")
+    getglobal(cb:GetName() .. "Text"):SetText(labelText)
+    cb.tooltipText = tooltipText or ""
+    cb:SetScript("OnClick", onClick)
+    return cb
+end
 
 local dialog = CreateFrame("Frame", "PaniniSettingsDialog", UIParent)
-SetSize(dialog, 340, 420)
+SetSize(dialog, DIALOG_W, DIALOG_H)
 dialog:SetPoint("CENTER", UIParent, "CENTER")
 dialog:SetBackdrop({
     bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -42,19 +151,22 @@ dialog:SetBackdrop({
 })
 dialog:SetBackdropColor(0, 0, 0, 0.85)
 dialog:EnableMouse(true)
-dialog:SetMovable(true)
-dialog:RegisterForDrag("LeftButton")
-dialog:SetScript("OnDragStart", function()
-    this:StartMoving()
-end)
-dialog:SetScript("OnDragStop", function()
-    this:StopMovingOrSizing()
-    local c = GetConfig()
-    local _, _, _, x, y = this:GetPoint(1)
-    c.posX = math.floor(x + 0.5)
-    c.posY = math.floor(y + 0.5)
+dialog:RegisterEvent("PLAYER_REGEN_DISABLED")
+dialog:SetScript("OnEvent", function()
+    if event == "PLAYER_REGEN_DISABLED" and dialog:IsShown() then
+        dialog:Hide()
+    end
 end)
 dialog:Hide()
+
+local _originalToggleGameMenu = ToggleGameMenu
+ToggleGameMenu = function()
+    if dialog:IsShown() then
+        dialog:Hide()
+        return
+    end
+    _originalToggleGameMenu()
+end
 
 local title = dialog:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 title:SetPoint("TOPLEFT", 18, -18)
@@ -70,40 +182,6 @@ end)
 local tabPageContainer = CreateFrame("Frame", "PaniniSettingsPageContainer", dialog)
 tabPageContainer:SetPoint("TOPLEFT", 10, -42)
 tabPageContainer:SetPoint("BOTTOMRIGHT", -10, 36)
-
-local function CreateSlider(parent, name, labelText, lowText, highText, minVal, maxVal, configKey, cvar)
-    local step = (maxVal - minVal) / 14
-    local slider = CreateFrame("Slider", name, parent, "OptionsSliderTemplate")
-    slider:SetMinMaxValues(minVal, maxVal)
-    slider:SetValueStep(step)
-    slider:SetWidth(SLIDER_W)
-    slider:SetHeight(SLIDER_H)
-
-    local textName = slider:GetName() .. "Text"
-    local lowName = slider:GetName() .. "Low"
-    local highName = slider:GetName() .. "High"
-
-    getglobal(textName):SetText(labelText)
-    getglobal(lowName):SetText(lowText)
-    getglobal(highName):SetText(highText)
-
-    slider:SetScript("OnValueChanged", function()
-        local value = this:GetValue()
-        local c = GetConfig()
-        c[configKey] = value
-        SafeSetCVar(cvar, tostring(value))
-    end)
-
-    return slider
-end
-
-local function CreateCheckbox(parent, name, labelText, tooltipText, onClick)
-    local cb = CreateFrame("CheckButton", name, parent, "OptionsCheckButtonTemplate")
-    getglobal(cb:GetName() .. "Text"):SetText(labelText)
-    cb.tooltipText = tooltipText or ""
-    cb:SetScript("OnClick", onClick)
-    return cb
-end
 
 local pageSettings = CreateFrame("Frame", "PaniniSettingsPageSettings", tabPageContainer)
 pageSettings:SetAllPoints(tabPageContainer)
@@ -123,7 +201,7 @@ local cbEnabled = CreateCheckbox(pageSettings, "PaniniSettingsEnabled",
 )
 cbEnabled:SetPoint("TOPLEFT", 10, y)
 
-y = y - 45
+y = y - 50
 
 local sStrength = CreateSlider(pageSettings, "PaniniSettingsStrength",
     "Strength", "0", "0.10", 0, 0.10,
@@ -131,7 +209,7 @@ local sStrength = CreateSlider(pageSettings, "PaniniSettingsStrength",
 )
 sStrength:SetPoint("TOPLEFT", 20, y)
 
-y = y - 55
+y = y - 60
 
 local sVert = CreateSlider(pageSettings, "PaniniSettingsVertical",
     "Vertical Comp", "-1", "1", -1, 1,
@@ -139,7 +217,7 @@ local sVert = CreateSlider(pageSettings, "PaniniSettingsVertical",
 )
 sVert:SetPoint("TOPLEFT", 20, y)
 
-y = y - 55
+y = y - 60
 
 local sFill = CreateSlider(pageSettings, "PaniniSettingsFill",
     "Fill", "0", "1", 0, 1,
@@ -147,22 +225,20 @@ local sFill = CreateSlider(pageSettings, "PaniniSettingsFill",
 )
 sFill:SetPoint("TOPLEFT", 20, y)
 
-y = y - 55
+y = y - 60
 
 local sFov = CreateSlider(pageSettings, "PaniniSettingsFov",
-    "FOV (rad)", "0.1", "3.14", 0.1, 3.14,
-    "fov", "paniniFov"
+    "FOV (rad)", "0.1", "3.09", 0.1, 3.09,
+    "fov", "paniniFov",
+    { onValueChanged = function(value)
+        local c = GetConfig()
+        if c.enabled then
+            SafeSetCVar("FoV", tostring(value))
+            PaniniClassicWoW.UpdateFovTracking(value)
+        end
+    end }
 )
 sFov:SetPoint("TOPLEFT", 20, y)
-sFov:SetScript("OnValueChanged", function()
-    local value = this:GetValue()
-    local c = GetConfig()
-    c.fov = value
-    SafeSetCVar("paniniFov", tostring(value))
-    if c.enabled then
-        SafeSetCVar("FoV", tostring(value))
-    end
-end)
 
 local pageDebug = CreateFrame("Frame", "PaniniSettingsPageDebug", tabPageContainer)
 pageDebug:SetAllPoints(tabPageContainer)
@@ -245,7 +321,7 @@ local function CreateTabButton(parent, name, label, pageFrame, selected)
 end
 
 local tab1 = CreateTabButton(dialog, "PaniniSettingsTabSettings", "Settings", pageSettings, true)
-tab1:SetPoint("BOTTOMLEFT", 30, 5)
+tab1:SetPoint("BOTTOMLEFT", 118, 5)
 
 local tab2 = CreateTabButton(dialog, "PaniniSettingsTabDebug", "Debug", pageDebug, false)
 tab2:SetPoint("LEFT", tab1, "RIGHT", 4, 0)
@@ -269,16 +345,11 @@ end
 function PaniniSettingsDialog_OnShow()
     local c = GetConfig()
 
-    if c.posX and c.posY and (c.posX ~= 0 or c.posY ~= 0) then
-        dialog:ClearAllPoints()
-        dialog:SetPoint("CENTER", UIParent, "CENTER", c.posX, c.posY)
-    end
-
     cbEnabled:SetChecked(c.enabled and 1 or nil)
-    sStrength:SetValue(c.strength or 0.0333)
+    sStrength:SetValue(c.strength or 0.0285)
     sVert:SetValue(c.verticalComp or 0)
     sFill:SetValue(c.fill or 1.0)
-    sFov:SetValue(c.fov or 2.6)
+    sFov:SetValue(c.fov or 2.6565)
 
     local tintVal = SafeGetCVar("paniniDebugTint")
     cbTint:SetChecked(tintVal == "1" and 1 or nil)
@@ -290,10 +361,17 @@ end
 dialog:SetScript("OnShow", PaniniSettingsDialog_OnShow)
 
 function PaniniClassicWoW.ToggleSettings()
-    if dialog:IsShown() then
-        dialog:Hide()
+    local dlg = getglobal("PaniniSettingsDialog")
+    if not dlg then
+        DEFAULT_CHAT_FRAME:AddMessage("|cffff0000Panini|r dialog frame not found (Settings file may not have loaded)")
+        return
+    end
+    if dlg:IsShown() then
+        dlg:Hide()
     else
-        dialog:Show()
+        dlg:ClearAllPoints()
+        dlg:SetPoint("CENTER", UIParent, "CENTER")
+        dlg:Show()
     end
 end
 

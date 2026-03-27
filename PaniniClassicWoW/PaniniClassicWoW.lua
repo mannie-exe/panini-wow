@@ -8,11 +8,11 @@ if not SUPERWOW_VERSION then
 end
 
 local defaults = {
-    enabled = false,
-    strength = 0.0333,
+    enabled = true,
+    strength = 0.0285,
     verticalComp = 0.0,
     fill = 1.0,
-    fov = 2.6,
+    fov = 2.6565,
 }
 
 PaniniClassicWoW = PaniniClassicWoW or {}
@@ -98,6 +98,10 @@ PaniniClassicWoW.SafeSetCVar = SafeSetCVar
 PaniniClassicWoW.SafeGetCVar = SafeGetCVar
 PaniniClassicWoW.EnablePanini = EnablePanini
 PaniniClassicWoW.DisablePanini = DisablePanini
+PaniniClassicWoW.UpdateFovTracking = function(value)
+    lastKnownFov = value
+    fovTrackSuppress = 2
+end
 PaniniClassicWoW.ToggleSettings = function() end
 
 frame:SetScript("OnEvent", function()
@@ -273,7 +277,7 @@ SlashCmdList["PANINI"] = function(msg)
             lastKnownFov = PaniniClassicWoW_Config.fov
             fovTrackSuppress = 1
         end
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r reset to defaults (disabled, strength=0.0333, vertical=0, fill=1.0, fov=2.6)")
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r reset to defaults (enabled, strength=0.0285, vertical=0, fill=1.0, fov=2.6565)")
 
 
     elseif cmd == "status" then
