@@ -82,28 +82,23 @@ TEST_F(InvariantTest, ComputeFillZoom_StrengthNegative_AlwaysOne) {
 // ---------------------------------------------------------------------------
 
 // C++ port of panini.hlsl paniniInverse for testing.
+// sqrt-based Panini_Generic formulation. Returns unnormalized (x/z, y/z, 1.0).
 struct Vec3 { float x, y, z; };
 
 static Vec3 paniniInverse(float projX, float projY, float D, float S) {
-    float dp1 = D + 1.0f;
-    float k = (projX * projX) / (dp1 * dp1);
-    float disc = k * k * D * D - (k + 1.0f) * (k * D * D - 1.0f);
-    if (disc <= 0.0f)
+    float viewDist = D + 1.0f;
+    float viewHypSq = projX * projX + viewDist * viewDist;
+    float isectDiscrim = viewHypSq - projX * projX * D * D;
+    if (isectDiscrim <= 0.0f)
         return {projX, projY, 1.0f};
-    float cLon = (-k * D + sqrtf(disc)) / (k + 1.0f);
-    float Sv = dp1 / (D + cLon);
-    float lat = atan2f(projY, Sv);
-    float lon = atan2f(projX, Sv * cLon);
-    float cosLat = cosf(lat);
-    Vec3 ray = { cosLat * sinf(lon), sinf(lat), cosLat * cosf(lon) };
-    if (ray.z > 0.0f) {
-        float q = ray.x / ray.z;
-        q = (q * q) / (dp1 * dp1);
-        float comp = S > 0.0f ? 1.0f / sqrtf(1.0f + q) : 1.0f;
-        float lerpFactor = fabsf(S);
-        ray.y *= (1.0f - lerpFactor) + lerpFactor * comp;
-    }
-    return ray;
+    float cLon = (-projX * projX * D + viewDist * sqrtf(isectDiscrim)) / viewHypSq;
+    float factor = (cLon + D) / (viewDist * cLon);
+    float dirX = projX * factor;
+    float dirY = projY * factor;
+    float q = dirX * dirX / (viewDist * viewDist);
+    float comp = 1.0f / sqrtf(1.0f + q);
+    dirY *= 1.0f + S * (comp - 1.0f);
+    return {dirX, dirY, 1.0f};
 }
 
 TEST_F(InvariantTest, CenterPixel_PreservesForwardDirection) {

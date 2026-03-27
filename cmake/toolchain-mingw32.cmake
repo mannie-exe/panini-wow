@@ -25,6 +25,12 @@ set(CMAKE_CXX_FLAGS_INIT "-msse2 -mfpmath=sse")
 set(CMAKE_EXE_LINKER_FLAGS_INIT "-static-libgcc -static-libstdc++")
 set(CMAKE_SHARED_LINKER_FLAGS_INIT "-static-libgcc -static-libstdc++")
 
+# Wine runs cross-compiled executables (tests, discovery)
+find_program(WINE_EXECUTABLE NAMES wine wine64)
+if(WINE_EXECUTABLE)
+    set(CMAKE_CROSSCOMPILING_EMULATOR "${WINE_EXECUTABLE}" CACHE STRING "")
+endif()
+
 # Search behavior: programs on host, libraries/headers in target sysroot
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)

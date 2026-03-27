@@ -14,57 +14,19 @@ sampler2D sceneTex : register(s0);
 float4 u_params : register(c0); // x=D, y=halfTanFov, z=fillZoom, w=enabled
 float4 u_extra  : register(c1); // x=S, y=aspect, z=0, w=0
 
-// Panini inverse mapping: screen-space XY -> view-space ray direction.
-//
-// Given a point on the panini projection plane, compute the 3D ray direction
-// that would project to that point on a cylinder of radius (D+1).
-//
-// D=0  : rectilinear (no distortion, passthrough)
-// D=1  : full cylindrical (Pannini stereographic)
-// D=0.5: typical sweet spot for gaming
-//
-// S controls vertical compensation:
-//   S=0  : no vertical compensation
-//   S=1  : full vertical compression (keeps verticals straight at edges)
-//   S=-1 : vertical expansion
-float3 paniniInverse(float2 projXY, float D, float S) {
-    float dp1 = D + 1.0;
+#include "panini_common.hlsli"
 
-    // Solve quadratic for cos(longitude) from the projected X coordinate.
-    float k = (projXY.x * projXY.x) / (dp1 * dp1);
-    float disc = k * k * D * D - (k + 1.0) * (k * D * D - 1.0);
+float4 paniniSample(float2 texcoord, float D, float halfTan, float zoom, float S, float aspect, float2 gradX, float2 gradY) {
+    float2 maxRectXY = float2(halfTan * aspect, halfTan);
+    float2 screenXY = (texcoord * 2.0 - 1.0) / max(zoom, 0.001);
+    float2 projXY = screenXY * maxRectXY;
+    float3 ray = paniniInverse(projXY, D, S);
+    float2 srcUV = (ray.xy / ray.z) / maxRectXY * 0.5 + 0.5;
 
-    // Negative discriminant = outside projection domain; graceful fallback.
-    if (disc <= 0.0)
-        return normalize(float3(projXY, 1.0));
+    if (srcUV.x >= 0.0 && srcUV.x <= 1.0 && srcUV.y >= 0.0 && srcUV.y <= 1.0)
+        return tex2Dgrad(sceneTex, srcUV, gradX, gradY);
 
-    float c_lon = (-k * D + sqrt(disc)) / (k + 1.0);
-
-    // Recover the cylinder scale factor for this longitude.
-    float Sv = dp1 / (D + c_lon);
-
-    // Compute latitude and longitude angles.
-    float2 ang = float2(
-        atan2(projXY.y, Sv),          // latitude
-        atan2(projXY.x, Sv * c_lon)   // longitude
-    );
-
-    // Convert spherical angles to 3D ray direction.
-    float cos_lat = cos(ang.x);
-    float3 ray = float3(
-        cos_lat * sin(ang.y),  // x
-        sin(ang.x),            // y
-        cos_lat * cos(ang.y)   // z (depth)
-    );
-
-    // Vertical compensation: reduce vertical stretching at edges.
-    if (ray.z > 0.0) {
-        float q = ray.x / ray.z;
-        q = (q * q) / (dp1 * dp1);
-        ray.y *= lerp(1.0, rsqrt(1.0 + q), S);
-    }
-
-    return ray;
+    return float4(0.0, 0.0, 0.0, 1.0);
 }
 
 float4 main(float2 texcoord : TEXCOORD0) : COLOR0 {
@@ -74,22 +36,11 @@ float4 main(float2 texcoord : TEXCOORD0) : COLOR0 {
     float S       = u_extra.x;
     float aspect  = u_extra.y;
 
-    // Passthrough when disabled or negligible strength.
     if (D < 0.001)
         return tex2D(sceneTex, texcoord);
 
-    float2 maxRectXY = float2(halfTan * aspect, halfTan);
+    float2 gradX = ddx(texcoord);
+    float2 gradY = ddy(texcoord);
 
-    // Map [0,1] UV to [-1,1] screen space, apply zoom.
-    float2 screenXY = (texcoord * 2.0 - 1.0) / max(zoom, 0.001);
-    float2 projXY   = screenXY * maxRectXY;
-
-    float3 ray = paniniInverse(projXY, D, S);
-
-    float2 srcUV = (ray.xy / ray.z) / maxRectXY * 0.5 + 0.5;
-
-    if (srcUV.x >= 0.0 && srcUV.x <= 1.0 && srcUV.y >= 0.0 && srcUV.y <= 1.0)
-        return tex2D(sceneTex, srcUV);
-
-    return float4(0.0, 0.0, 0.0, 1.0);
+    return paniniSample(texcoord, D, halfTan, zoom, S, aspect, gradX, gradY);
 }

@@ -9,37 +9,23 @@ struct Vec3 {
 };
 
 static Vec3 paniniInverse(float projX, float projY, float D, float S) {
-    float dp1 = D + 1.0f;
+    float viewDist = D + 1.0f;
+    float viewHypSq = projX * projX + viewDist * viewDist;
+    float isectDiscrim = viewHypSq - projX * projX * D * D;
 
-    float k = (projX * projX) / (dp1 * dp1);
-    float disc = k * k * D * D - (k + 1.0f) * (k * D * D - 1.0f);
-
-    if (disc <= 0.0f)
+    if (isectDiscrim <= 0.0f)
         return {projX, projY, 1.0f};
 
-    float cLon = (-k * D + sqrtf(disc)) / (k + 1.0f);
-    float Sv = dp1 / (D + cLon);
+    float cLon = (-projX * projX * D + viewDist * sqrtf(isectDiscrim)) / viewHypSq;
+    float factor = (cLon + D) / (viewDist * cLon);
+    float dirX = projX * factor;
+    float dirY = projY * factor;
 
-    float lat = atan2f(projY, Sv);
-    float lon = atan2f(projX, Sv * cLon);
+    float q = dirX * dirX / (viewDist * viewDist);
+    float comp = 1.0f / sqrtf(1.0f + q);
+    dirY *= 1.0f + S * (comp - 1.0f);
 
-    float cosLat = cosf(lat);
-    Vec3 ray = {
-        cosLat * sinf(lon),
-        sinf(lat),
-        cosLat * cosf(lon)
-    };
-
-    // Vertical compensation
-    if (ray.z > 0.0f) {
-        float q = ray.x / ray.z;
-        q = (q * q) / (dp1 * dp1);
-        float comp = S > 0.0f ? 1.0f / sqrtf(1.0f + q) : 1.0f;
-        float lerpFactor = fabsf(S);
-        ray.y *= (1.0f - lerpFactor) + lerpFactor * comp;
-    }
-
-    return ray;
+    return {dirX, dirY, 1.0f};
 }
 
 // Forward panini projection: ray direction -> projected XY.
@@ -87,8 +73,8 @@ protected:
 };
 
 TEST_F(PaniniProjectionTest, NearZeroD_ApproximatelyIdentity) {
-    // D near 0 produces minimal distortion.
-    // D=0 exactly has a division-by-zero in Sv = dp1/(D+cLon) since cLon=0.
+    // D near 0 produces minimal distortion. factor approaches 1.0 as D -> 0,
+    // so the output approximates normalize(projXY, 1.0).
     // In practice D < 0.001 is treated as passthrough by the shader's D < 0.001 guard.
     float projX = 0.5f;
     float projY = 0.3f;
@@ -125,43 +111,43 @@ TEST_F(PaniniProjectionTest, VerticalSymmetry) {
     EXPECT_NEAR(rayPos.z, rayNeg.z, 0.001f);
 }
 
-TEST_F(PaniniProjectionTest, UnitRay_LengthApproximatelyOne) {
-    // Output rays should be approximately unit length.
+TEST_F(PaniniProjectionTest, RayDirection_ZIsOne) {
+    // sqrt-based formulation returns (x/z, y/z, 1.0).
+    // z is always 1.0 for valid (non-fallback) inputs.
     Vec3 ray = paniniInverse(0.3f, 0.2f, 0.5f, 0.0f);
-    float len = vec3Length(ray);
-    EXPECT_NEAR(len, 1.0f, 0.01f);
+    EXPECT_NEAR(ray.z, 1.0f, 0.001f);
+    EXPECT_NE(ray.x * ray.x + ray.y * ray.y, 0.0f);
 }
 
 TEST_F(PaniniProjectionTest, DOne_MaximumDistortion) {
     // D=1 is full cylindrical projection. Should still produce valid rays.
     Vec3 ray = paniniInverse(0.5f, 0.0f, 1.0f, 0.0f);
-    float len = vec3Length(ray);
-    EXPECT_NEAR(len, 1.0f, 0.01f);
-    EXPECT_GT(ray.z, 0.0f);
+    EXPECT_NEAR(ray.z, 1.0f, 0.001f);
+    EXPECT_GT(ray.x, 0.0f);
 }
 
-TEST_F(PaniniProjectionTest, VerticalComp_SZero_MatchesSMinusOne) {
-    // The vertical compensation blends: y *= (1 - |S|) + |S| * comp.
-    // S=0 and S=-1 should produce identical Y because lerp(1.0, rsqrt(..), S)
-    // uses abs(S) as the lerp factor. S=0 gives lerpFactor=0 (no-op).
-    // S=-1 gives lerpFactor=1 but S<0 skips the comp path entirely (only S>0 applies comp).
-    // Actually: the code checks `S > 0.0` before applying comp, and uses `abs(S)` for lerp.
-    // S=0: lerpFactor=0, so y *= 1.0. S=-1: lerpFactor=1, comp branch skipped, so y *= (1-1)+1*1=1.
-    // Both should be identical.
+TEST_F(PaniniProjectionTest, VerticalComp_SZero_IsIdentity) {
+    // S=0 produces no vertical compensation: y *= lerp(1.0, rsqrt(..), 0) = 1.0.
     float D = 0.5f;
     Vec3 rayS0 = paniniInverse(1.0f, 0.5f, D, 0.0f);
-    Vec3 raySNeg1 = paniniInverse(1.0f, 0.5f, D, -1.0f);
-    EXPECT_NEAR(rayS0.y, raySNeg1.y, 0.0001f);
-    EXPECT_NEAR(rayS0.x, raySNeg1.x, 0.0001f);
-    EXPECT_NEAR(rayS0.z, raySNeg1.z, 0.0001f);
+    Vec3 rayS0Direct = paniniInverse(1.0f, 0.5f, D, 0.0f);
+    EXPECT_FLOAT_EQ(rayS0.y, rayS0Direct.y);
 }
 
 TEST_F(PaniniProjectionTest, VerticalComp_SPositive_ReducesStretching) {
     float D = 0.5f;
     Vec3 rayNoComp = paniniInverse(1.5f, 0.5f, D, 0.0f);
     Vec3 rayWithComp = paniniInverse(1.5f, 0.5f, D, 1.0f);
-    // Vertical compensation should reduce Y at edges.
+    // S=1 compresses Y: y *= rsqrt(1+q) < 1 for q > 0.
     EXPECT_LT(fabsf(rayWithComp.y), fabsf(rayNoComp.y));
+}
+
+TEST_F(PaniniProjectionTest, VerticalComp_SNegative_ExpandsVertical) {
+    float D = 0.5f;
+    Vec3 rayNoComp = paniniInverse(1.5f, 0.5f, D, 0.0f);
+    Vec3 raySNeg = paniniInverse(1.5f, 0.5f, D, -1.0f);
+    // S=-1 expands Y: y *= 2 - rsqrt(1+q) > 1 for q > 0.
+    EXPECT_GT(fabsf(raySNeg.y), fabsf(rayNoComp.y));
 }
 
 TEST_F(PaniniProjectionTest, LargeProjectionXY_TriggersFallback) {

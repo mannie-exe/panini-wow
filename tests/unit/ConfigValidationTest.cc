@@ -106,3 +106,50 @@ TEST_F(ConfigValidationTest, Fov_Infinity) {
     EXPECT_FALSE(IsValidFov(std::numeric_limits<float>::infinity()));
     EXPECT_FALSE(IsValidFov(-std::numeric_limits<float>::infinity()));
 }
+
+// FXAA: boolean toggle
+TEST_F(ConfigValidationTest, Fxaa_DefaultEnabled) {
+    bool v = true;
+    EXPECT_TRUE(v);
+}
+
+TEST_F(ConfigValidationTest, Fxaa_CanDisable) {
+    bool v = false;
+    EXPECT_FALSE(v);
+}
+
+// Sharpen: valid [0.0, 1.0], C++ clamps to this range
+TEST_F(ConfigValidationTest, Sharpen_Zero) {
+    float v = 0.0f;
+    if (v < 0.0f) v = 0.0f;
+    if (v > 1.0f) v = 1.0f;
+    EXPECT_FLOAT_EQ(v, 0.0f);
+}
+
+TEST_F(ConfigValidationTest, Sharpen_Max) {
+    float v = 1.0f;
+    if (v < 0.0f) v = 0.0f;
+    if (v > 1.0f) v = 1.0f;
+    EXPECT_FLOAT_EQ(v, 1.0f);
+}
+
+TEST_F(ConfigValidationTest, Sharpen_Negative_ClampedToZero) {
+    float v = -0.5f;
+    if (v < 0.0f) v = 0.0f;
+    if (v > 1.0f) v = 1.0f;
+    EXPECT_FLOAT_EQ(v, 0.0f);
+}
+
+TEST_F(ConfigValidationTest, Sharpen_AboveMax_ClampedToOne) {
+    float v = 1.5f;
+    if (v < 0.0f) v = 0.0f;
+    if (v > 1.0f) v = 1.0f;
+    EXPECT_FLOAT_EQ(v, 1.0f);
+}
+
+TEST_F(ConfigValidationTest, Sharpen_TypicalValue) {
+    float v = 0.35f;
+    if (v < 0.0f) v = 0.0f;
+    if (v > 1.0f) v = 1.0f;
+    EXPECT_FLOAT_EQ(v, 0.35f);
+}

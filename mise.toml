@@ -30,6 +30,12 @@ description = "Configure and build (Release)"
 run = "CONFIGURE_PRESET=cross-mingw32 BUILD_PRESET=release sh tasks/build.sh"
 run_windows = "$env:CONFIGURE_PRESET='cross-mingw32'; $env:BUILD_PRESET='release'; & .\\tasks\\build.ps1"
 
+[tasks.test]
+alias = "t"
+description = "Run unit tests (cross-compiled, via Wine)"
+depends = ["build"]
+run = "WINEDEBUG=-all ctest --test-dir build/cross-mingw32-debug --output-on-failure"
+
 # Shaders
 
 [tasks.shader]
