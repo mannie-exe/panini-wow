@@ -217,13 +217,34 @@ SlashCmdList["PANINI"] = function(msg)
         end
 
     elseif cmd == "debug" then
-        local debugOn = SafeGetCVar("paniniDebug")
-        if debugOn == "1" then
-            SafeSetCVar("paniniDebug", "0")
-            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r debug off")
+        if val == "tint" then
+            local tintOn = SafeGetCVar("paniniDebugTint")
+            if tintOn == "1" then
+                SafeSetCVar("paniniDebugTint", "0")
+                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r debug tint off")
+            else
+                SafeSetCVar("paniniDebugTint", "1")
+                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r debug tint on (red channel -33%)")
+            end
+        elseif val == "uv" then
+            local uvOn = SafeGetCVar("paniniDebugUV")
+            if uvOn == "1" then
+                SafeSetCVar("paniniDebugUV", "0")
+                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r debug uv off")
+            else
+                SafeSetCVar("paniniDebugUV", "1")
+                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r debug uv on (UV visualization)")
+            end
+        elseif val == "off" then
+            SafeSetCVar("paniniDebugTint", "0")
+            SafeSetCVar("paniniDebugUV", "0")
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r all debug modes off")
         else
-            SafeSetCVar("paniniDebug", "1")
-            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r debug on (red channel -33%)")
+            local tintVal = SafeGetCVar("paniniDebugTint") or "0"
+            local uvVal = SafeGetCVar("paniniDebugUV") or "0"
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r debug state:")
+            DEFAULT_CHAT_FRAME:AddMessage("  tint: " .. (tintVal == "1" and "on" or "off"))
+            DEFAULT_CHAT_FRAME:AddMessage("  uv: " .. (uvVal == "1" and "on" or "off"))
         end
 
     elseif cmd == "reset" then
@@ -232,6 +253,8 @@ SlashCmdList["PANINI"] = function(msg)
             PaniniClassicWoW_Config[k] = v
         end
         SyncCVarsToDLL()
+        SafeSetCVar("paniniDebugTint", "0")
+        SafeSetCVar("paniniDebugUV", "0")
         InitUserFov()
         if PaniniClassicWoW_Config.enabled then
             SafeSetCVar("FoV", tostring(PaniniClassicWoW_Config.fov))
@@ -241,11 +264,13 @@ SlashCmdList["PANINI"] = function(msg)
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r reset to defaults (disabled, strength=0.0333, vertical=0, fill=1.0, fov=2.6)")
 
     elseif cmd == "status" then
-        local debugVal = SafeGetCVar("paniniDebug") or "0"
+        local tintVal = SafeGetCVar("paniniDebugTint") or "0"
+        local uvVal = SafeGetCVar("paniniDebugUV") or "0"
         local uf = GetUserFov()
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPaniniClassicWoW|r status:")
         DEFAULT_CHAT_FRAME:AddMessage("  enabled: " .. tostring(c.enabled))
-        DEFAULT_CHAT_FRAME:AddMessage("  debug: " .. (debugVal == "1" and "on" or "off"))
+        DEFAULT_CHAT_FRAME:AddMessage("  debug tint: " .. (tintVal == "1" and "on" or "off"))
+        DEFAULT_CHAT_FRAME:AddMessage("  debug uv: " .. (uvVal == "1" and "on" or "off"))
         DEFAULT_CHAT_FRAME:AddMessage("  strength: " .. c.strength)
         DEFAULT_CHAT_FRAME:AddMessage("  vertical: " .. c.verticalComp)
         DEFAULT_CHAT_FRAME:AddMessage("  fill: " .. c.fill)
@@ -256,7 +281,8 @@ SlashCmdList["PANINI"] = function(msg)
     elseif cmd == "cvars" then
         local names = {
             "paniniEnabled", "paniniStrength", "paniniVertComp",
-            "paniniFill", "paniniDebug", "paniniFov", "paniniUserFov", "FoV",
+            "paniniFill", "paniniDebugTint", "paniniDebugUV",
+            "paniniFov", "paniniUserFov", "FoV",
         }
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r CVar readback:")
         for _, name in ipairs(names) do
@@ -277,6 +303,8 @@ SlashCmdList["PANINI"] = function(msg)
         DEFAULT_CHAT_FRAME:AddMessage("  config.verticalComp: " .. tostring(c.verticalComp))
         DEFAULT_CHAT_FRAME:AddMessage("  config.fill: " .. tostring(c.fill))
         DEFAULT_CHAT_FRAME:AddMessage("  config.fov: " .. tostring(c.fov))
+        DEFAULT_CHAT_FRAME:AddMessage("  paniniDebugTint: " .. tostring(SafeGetCVar("paniniDebugTint") or "0"))
+        DEFAULT_CHAT_FRAME:AddMessage("  paniniDebugUV: " .. tostring(SafeGetCVar("paniniDebugUV") or "0"))
         DEFAULT_CHAT_FRAME:AddMessage("  paniniUserFov: " .. tostring(GetUserFov()))
         DEFAULT_CHAT_FRAME:AddMessage("  lastKnownFov: " .. tostring(lastKnownFov))
         local fov = SafeGetCVar("FoV")
@@ -291,7 +319,10 @@ SlashCmdList["PANINI"] = function(msg)
         DEFAULT_CHAT_FRAME:AddMessage("  /panini strength N    set strength (0 to 1)")
         DEFAULT_CHAT_FRAME:AddMessage("  /panini vertical N    set vertical comp (-1 to 1)")
         DEFAULT_CHAT_FRAME:AddMessage("  /panini fill N        set fill zoom (0 to 1)")
-        DEFAULT_CHAT_FRAME:AddMessage("  /panini debug         toggle debug shader (red -33%)")
+        DEFAULT_CHAT_FRAME:AddMessage("  /panini debug         show debug state")
+        DEFAULT_CHAT_FRAME:AddMessage("  /panini debug tint   toggle debug tint (red -33%)")
+        DEFAULT_CHAT_FRAME:AddMessage("  /panini debug uv     toggle debug UV visualization")
+        DEFAULT_CHAT_FRAME:AddMessage("  /panini debug off    disable all debug modes")
         DEFAULT_CHAT_FRAME:AddMessage("  /panini status        show current settings")
         DEFAULT_CHAT_FRAME:AddMessage("  /panini cvars         show CVar readback from engine")
         DEFAULT_CHAT_FRAME:AddMessage("  /panini debuginfo     show debug diagnostics")

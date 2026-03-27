@@ -38,7 +38,7 @@ Lua Addon (SetCVar) --> WoW CVar System <-- DLL (reads CVars each frame)
 INFO-level always on. DEBUG-level gated behind `PANINI_DEBUG_LOG` CMake flag. Hex-bit float logging via `FloatBits()` (MinGW `%f` broken under Wine).
 
 ### Layer 1: CVar System [DONE]
-Registration via `CVar::Register` at `0x0063DB90`. Lookup via `CVarLookup` at `0x0063DEC0`. 7 CVars registered: paniniEnabled, paniniStrength, paniniVertComp, paniniFill, paniniDebug, paniniFov, paniniUserFov.
+Registration via `CVar::Register` at `0x0063DB90`. Lookup via `CVarLookup` at `0x0063DEC0`. 8 CVars registered: paniniEnabled, paniniStrength, paniniVertComp, paniniFill, paniniDebugTint, paniniDebugUV, paniniFov, paniniUserFov.
 
 ### Layer 2: RenderWorld Hook [DONE]
 JMP chain on existing hook at `0x00482D70`. Calls existing chain via trampoline with ECX clobber-safe inline asm. UpdateCameraFov writes camera+0x40 before 3D render. ApplyPaniniPass runs after 3D render.
@@ -77,8 +77,8 @@ UpdateCameraFov() writes camera+0x40 directly from RenderWorld hook (before 3D r
 ### 1. Settings GUI (native WoW frame XML)
 In-game settings panel with slider widgets for strength, vertical comp, fill, FOV. Toggle checkbox for enable/debug. Must be native WoW frame XML — no Ace3 dependency. Must be pfUI-reskinnable and compatible with external AddOns (no global namespace pollution, use `PaniniClassicWoW` prefix for all frames). Slash commands remain as fallback.
 
-### 2. Debug Shader Subcommands
-`/panini debug tint` and `/panini debug uv` independently toggle each shader mode. Currently a single on/off toggle. New CVars: `paniniDebugTint`, `paniniDebugUV`. Shader selection logic in ApplyPaniniPass.
+### 2. Debug Shader Subcommands [DONE]
+`/panini debug tint` and `/panini debug uv` independently toggle each shader mode. CVars: `paniniDebugTint`, `paniniDebugUV`. Shader selection logic in ApplyPaniniPass chooses debug shader when either flag is set.
 
 ### 3. Pattern Scanning for Addresses
 Replace hardcoded memory addresses (`0x0063DEC0`, `0x00B4B2BC`, `0x00482D70`, etc.) with byte-pattern scans of WoW `.text` section. Single `PatternScan(base, size, signature)` utility, then replace all `constexpr` addresses. Survives TurtleWoW binary updates.

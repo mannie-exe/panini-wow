@@ -17,19 +17,21 @@ void CVar_RegisterAll() {
     char n2[] = "paniniStrength";
     char n3[] = "paniniVertComp";
     char n4[] = "paniniFill";
-    char n5[] = "paniniDebug";
-    char n6[] = "paniniFov";
-    char n7[] = "paniniUserFov";
+    char n5[] = "paniniDebugTint";
+    char n6[] = "paniniDebugUV";
+    char n7[] = "paniniFov";
+    char n8[] = "paniniUserFov";
 
     CVarRegister(n1, nullptr, 0, "0",      nullptr, 5, 0, 0);
     CVarRegister(n2, nullptr, 0, "0.0333", nullptr, 5, 0, 0);
     CVarRegister(n3, nullptr, 0, "0.0",    nullptr, 5, 0, 0);
     CVarRegister(n4, nullptr, 0, "1.0",    nullptr, 5, 0, 0);
     CVarRegister(n5, nullptr, 0, "0",      nullptr, 5, 0, 0);
-    CVarRegister(n6, nullptr, 0, "2.6",    nullptr, 5, 0, 0);
-    CVarRegister(n7, nullptr, 0, "-1",     nullptr, 5, 0, 0);
+    CVarRegister(n6, nullptr, 0, "0",      nullptr, 5, 0, 0);
+    CVarRegister(n7, nullptr, 0, "2.6",    nullptr, 5, 0, 0);
+    CVarRegister(n8, nullptr, 0, "-1",     nullptr, 5, 0, 0);
 
-    LOG_INFO("cvar", "registered 7 CVars");
+    LOG_INFO("cvar", "registered 8 CVars");
 }
 
 float CVar_GetFloat(const char* name, float fallback) {
@@ -52,5 +54,6 @@ void PaniniConfig_ReadFromCVars(PaniniConfig* cfg) {
     cfg->strength     = CVar_GetFloat("paniniStrength", 0.0333f);
     cfg->verticalComp = CVar_GetFloat("paniniVertComp", 0.0f);
     cfg->fill         = CVar_GetFloat("paniniFill", 1.0f);
-    cfg->debug        = CVar_GetInt("paniniDebug", 0) != 0;
+    cfg->debugTint    = CVar_GetInt("paniniDebugTint", 0) != 0;
+    cfg->debugUV      = CVar_GetInt("paniniDebugUV", 0) != 0;
 }

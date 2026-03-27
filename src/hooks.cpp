@@ -80,7 +80,7 @@ static void ApplyPaniniPass(IDirect3DDevice9* dev) {
     if (cfg.fill != cfg.fill || cfg.fill < 0.0f) cfg.fill = 0.8f;
     if (cfg.fill > 1.0f) cfg.fill = 1.0f;
 
-    if (!cfg.enabled && !cfg.debug)
+    if (!cfg.enabled && !cfg.debugTint && !cfg.debugUV)
         return;
 
     IDirect3DSurface9* pBB = nullptr;
@@ -98,7 +98,7 @@ static void ApplyPaniniPass(IDirect3DDevice9* dev) {
         if (!pBB) return;
     }
 
-    IDirect3DPixelShader9* activeShader = cfg.debug ? g_pDebugShader : g_pPaniniShader;
+    IDirect3DPixelShader9* activeShader = (cfg.debugUV || cfg.debugTint) ? g_pDebugShader : g_pPaniniShader;
 
     float fov     = ReadCameraFov();
     float aspect  = (g_bbH > 0) ? static_cast<float>(g_bbW) / static_cast<float>(g_bbH) : 1.7778f;

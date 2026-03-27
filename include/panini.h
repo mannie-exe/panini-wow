@@ -35,7 +35,8 @@ struct PaniniConfig {
     float strength;
     float verticalComp;
     float fill;
-    bool  debug;
+    bool  debugTint;
+    bool  debugUV;
 };
 
 void PaniniConfig_ReadFromCVars(PaniniConfig* cfg);
