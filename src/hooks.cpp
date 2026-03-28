@@ -341,32 +341,69 @@ HRESULT __stdcall Hooked_Reset(IDirect3DDevice9* dev, D3DPRESENT_PARAMETERS* pPa
     return g_pOriginalReset(dev, pParams);
 }
 
+// 9-byte trampoline: saves the original prologue bytes and jumps back.
+// Original bytes at 0x00482D70:
+//   55           push ebp
+//   8B EC        mov ebp, esp
+//   81 EC 80000000  sub esp, 0x80
+// First clean instruction boundary at or after byte 5 is byte 9.
+static uint8_t* g_trampoline = nullptr;
+
 void InstallRenderWorldHook() {
     auto target = reinterpret_cast<uint8_t*>(wow::RenderWorld_Addr);
+    constexpr int PATCH_SIZE = 9;
 
-    if (target[0] != 0xE9) {
-        LOG_INFO("hook", "RenderWorld: expected existing JMP (0xE9), got 0x%02X", target[0]);
+    // If another mod already hooked (0xE9 = JMP), chain on top instead
+    if (target[0] == 0xE9) {
+        int32_t existingDisp;
+        memcpy(&existingDisp, target + 1, 4);
+        g_originalRenderWorldTarget = reinterpret_cast<uintptr_t>(target + 5) + existingDisp;
+        LOG_INFO("hook", "RenderWorld: chaining on existing JMP to %p",
+                reinterpret_cast<void*>(g_originalRenderWorldTarget));
+
+        DWORD oldProt;
+        VirtualProtect(target, 5, PAGE_EXECUTE_READWRITE, &oldProt);
+        int32_t newDisp = static_cast<int32_t>(
+            reinterpret_cast<intptr_t>(&Hooked_RenderWorld) - reinterpret_cast<intptr_t>(target + 5));
+        memcpy(target + 1, &newDisp, 4);
+        VirtualProtect(target, 5, oldProt, &oldProt);
+
+        LOG_INFO("hook", "RenderWorld: JMP redirected to %p", &Hooked_RenderWorld);
         return;
     }
 
-    // Read the existing JMP displacement (another mod already hooked this function).
-    int32_t existingDisp;
-    memcpy(&existingDisp, target + 1, 4);
-    g_originalRenderWorldTarget = reinterpret_cast<uintptr_t>(target + 5) + existingDisp;
+    // No existing hook — install our own 9-byte trampoline
+    // Trampoline: execute saved 9 bytes, then JMP to target+9
+    g_trampoline = reinterpret_cast<uint8_t*>(
+        VirtualAlloc(NULL, 32, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE));
+    if (!g_trampoline) {
+        LOG_INFO("hook", "RenderWorld: VirtualAlloc for trampoline failed");
+        return;
+    }
 
-    LOG_INFO("hook", "RenderWorld: existing JMP to %p, chaining on top",
-            reinterpret_cast<void*>(g_originalRenderWorldTarget));
+    memcpy(g_trampoline, target, PATCH_SIZE);
 
-    // Replace the JMP displacement to point to our function.
-    // No instruction boundary issues — we're just rewriting 4 bytes of an existing JMP.
+    // JMP to target + PATCH_SIZE (continue original function after our patch)
+    g_trampoline[PATCH_SIZE] = 0xE9;
+    int32_t trampolineDisp = static_cast<int32_t>(
+        reinterpret_cast<intptr_t>(target + PATCH_SIZE) -
+        reinterpret_cast<intptr_t>(g_trampoline + PATCH_SIZE + 5));
+    memcpy(g_trampoline + PATCH_SIZE + 1, &trampolineDisp, 4);
+
+    g_originalRenderWorldTarget = reinterpret_cast<uintptr_t>(g_trampoline);
+
+    // Patch original function: JMP to Hooked_RenderWorld + NOP padding
     DWORD oldProt;
-    VirtualProtect(target, 5, PAGE_EXECUTE_READWRITE, &oldProt);
+    VirtualProtect(target, PATCH_SIZE, PAGE_EXECUTE_READWRITE, &oldProt);
 
-    int32_t newDisp = static_cast<int32_t>(
+    target[0] = 0xE9;
+    int32_t hookDisp = static_cast<int32_t>(
         reinterpret_cast<intptr_t>(&Hooked_RenderWorld) - reinterpret_cast<intptr_t>(target + 5));
-    memcpy(target + 1, &newDisp, 4);
+    memcpy(target + 1, &hookDisp, 4);
+    memset(target + 5, 0x90, PATCH_SIZE - 5);
 
-    VirtualProtect(target, 5, oldProt, &oldProt);
+    VirtualProtect(target, PATCH_SIZE, oldProt, &oldProt);
 
-    LOG_INFO("hook", "RenderWorld: JMP redirected to %p", &Hooked_RenderWorld);
+    LOG_INFO("hook", "RenderWorld: trampoline at %p, hook at %p",
+            g_trampoline, &Hooked_RenderWorld);
 }
