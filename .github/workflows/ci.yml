@@ -5,6 +5,7 @@ on:
     paths: [src/**, include/**, shaders/**, tests/**, CMakeLists.txt, cmake/**, CMakePresets.json]
   pull_request:
     branches: [main]
+    paths: [src/**, include/**, shaders/**, tests/**, CMakeLists.txt, cmake/**, CMakePresets.json]
   workflow_dispatch:
 
 concurrency:
@@ -34,6 +35,7 @@ jobs:
         with:
           path: ~/.cache/CPM
           key: cpm-${{ hashFiles('CMakeLists.txt', 'cmake/**') }}
+          restore-keys: cpm-
       - run: mise run build:release
       - run: mise run build
       - run: mise run test
