@@ -356,7 +356,7 @@ local function CreateTabButton(parent, name, label, pageFrame, selected)
 end
 
 local tab1 = CreateTabButton(dialog, "PaniniSettingsTabSettings", "Settings", pageSettings, true)
-tab1:SetPoint("BOTTOMLEFT", 118, 5)
+tab1:SetPoint("BOTTOMLEFT", 118, 12)
 
 local tab2 = CreateTabButton(dialog, "PaniniSettingsTabDebug", "Debug", pageDebug, false)
 tab2:SetPoint("LEFT", tab1, "RIGHT", 4, 0)
