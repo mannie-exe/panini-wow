@@ -1,4 +1,5 @@
 #include "panini.h"
+#include "version.g.h"
 #include <cstring>
 
 typedef uintptr_t* (__fastcall* CVarLookup_t)(const char* name);
@@ -22,6 +23,7 @@ void CVar_RegisterAll() {
     char n7[] = "ppSharpen";
     char n8[] = "ppDebugTint";
     char n9[] = "ppDebugUV";
+    char n10[] = "ppVersion";
 
     CVarRegister(n1, nullptr, 0, "1",    nullptr, 5, 0, 0);
     CVarRegister(n2, nullptr, 0, "0.01", nullptr, 5, 0, 0);
@@ -32,8 +34,9 @@ void CVar_RegisterAll() {
     CVarRegister(n7, nullptr, 0, "0.2",  nullptr, 5, 0, 0);
     CVarRegister(n8, nullptr, 0, "0",    nullptr, 5, 0, 0);
     CVarRegister(n9, nullptr, 0, "0",    nullptr, 5, 0, 0);
+    CVarRegister(n10, nullptr, 0, PANINI_VERSION, nullptr, 5, 0, 0);
 
-    LOG_INFO("cvar", "registered 9 CVars");
+    LOG_INFO("cvar", "registered 10 CVars");
 }
 
 float CVar_GetFloat(const char* name, float fallback) {

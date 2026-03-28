@@ -6,6 +6,14 @@ project(PaniniWoW
     LANGUAGES C CXX
 )
 
+file(READ "${CMAKE_SOURCE_DIR}/VERSION" PANINI_VERSION)
+string(STRIP "${PANINI_VERSION}" PANINI_VERSION)
+configure_file(
+    "${CMAKE_SOURCE_DIR}/cmake/version.h.in"
+    "${CMAKE_BINARY_DIR}/generated/version.g.h"
+    @ONLY
+)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
