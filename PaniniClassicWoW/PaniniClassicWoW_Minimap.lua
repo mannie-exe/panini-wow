@@ -37,12 +37,9 @@ local function UpdatePosition(angle)
     btn:SetPoint("CENTER", Minimap, "CENTER", x, y)
 end
 
-local dragging = false
-
 btn:RegisterForDrag("LeftButton")
 
 btn:SetScript("OnDragStart", function()
-    dragging = true
     btn:SetScript("OnUpdate", function()
         local mx, my = Minimap:GetCenter()
         local px, py = GetCursorPosition()
@@ -57,7 +54,6 @@ btn:SetScript("OnDragStart", function()
 end)
 
 btn:SetScript("OnDragStop", function()
-    dragging = false
     btn:SetScript("OnUpdate", nil)
 end)
 
