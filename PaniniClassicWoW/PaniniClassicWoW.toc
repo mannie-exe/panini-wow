@@ -2,7 +2,7 @@
 ## Title: PaniniClassicWoW
 ## Notes: Panini projection post-process configuration.
 ## Author: zer0cell
-## Version: 0.2.0
+## Version: 0.0.0-dev
 ## SavedVariables: PaniniClassicWoW_Config
 PaniniClassicWoW.lua
 PaniniClassicWoW_Settings.lua

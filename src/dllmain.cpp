@@ -1,4 +1,5 @@
 #include "panini.h"
+#include "version.g.h"
 
 HMODULE g_hModule = NULL;
 
@@ -70,17 +71,23 @@ static bool InstallHooks() {
 
 static DWORD WINAPI InitThread(LPVOID) {
     LogInit();
-    LOG_INFO("init", "PaniniWoW v0.2.2 initializing (SSE2 math)");
-
-    CVar_RegisterAll();
-
-    Sleep(8000);
+    LOG_INFO("init", "PaniniWoW " PANINI_VERSION " initializing (SSE2 math)");
 
     if (!InstallHooks()) {
         LOG_INFO("init", "D3D hook installation failed");
         return 1;
     }
 
+    // Wait for another mod (SuperWoW) to hook RenderWorld with a JMP
+    auto pRW = reinterpret_cast<volatile uint8_t*>(wow::RenderWorld_Addr);
+    for (int i = 0; i < 300 && *pRW != 0xE9; i++)
+        Sleep(100);
+
+    if (*pRW != 0xE9) {
+        LOG_INFO("init", "no RenderWorld hook found after 30s, proceeding without");
+    }
+
+    CVar_RegisterAll();
     InstallRenderWorldHook();
 
     LOG_INFO("init", "ready");

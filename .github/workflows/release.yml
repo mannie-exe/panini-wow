@@ -34,6 +34,12 @@ jobs:
           key: cpm-${{ hashFiles('CMakeLists.txt', 'cmake/**') }}
           restore-keys: cpm-
 
+      - name: Set version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo -n "$VERSION" > VERSION
+          sed -i "s/## Version: .*/## Version: $VERSION/" PaniniClassicWoW/PaniniClassicWoW.toc
+
       - run: mise run build:release
 
       - run: mise run test

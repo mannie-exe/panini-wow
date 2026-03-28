@@ -1,0 +1,2 @@
+#pragma once
+#define PANINI_VERSION "@PANINI_VERSION@"

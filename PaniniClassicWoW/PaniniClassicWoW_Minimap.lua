@@ -1,4 +1,6 @@
-if not PaniniClassicWoW then return end
+if not PaniniClassicWoW then
+	return
+end
 
 local DEFAULT_ANGLE = 225
 local RADIUS = 80
@@ -33,10 +35,8 @@ icon:SetPoint("TOPLEFT", btn, "TOPLEFT", 7, -6)
 btn:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
 
 local function UpdatePosition(angle)
-    btn:ClearAllPoints()
-    btn:SetPoint("CENTER", Minimap, "CENTER",
-        math.cos(math.rad(angle)) * RADIUS,
-        math.sin(math.rad(angle)) * RADIUS)
+	btn:ClearAllPoints()
+	btn:SetPoint("CENTER", Minimap, "CENTER", math.cos(math.rad(angle)) * RADIUS, math.sin(math.rad(angle)) * RADIUS)
 end
 
 UpdatePosition(DEFAULT_ANGLE)
@@ -45,45 +45,47 @@ btn:Show()
 btn:RegisterForDrag("LeftButton")
 
 btn:SetScript("OnDragStart", function()
-    btn:SetScript("OnUpdate", function()
-        local mx, my = Minimap:GetCenter()
-        local px, py = GetCursorPosition()
-        local scale = UIParent:GetEffectiveScale()
-        px = px / scale
-        py = py / scale
-        local angle = math.deg(math.atan2(py - my, px - mx))
-        if angle < 0 then angle = angle + 360 end
-        PaniniClassicWoW_Config.minimapPos = angle
-        UpdatePosition(angle)
-    end)
+	btn:SetScript("OnUpdate", function()
+		local mx, my = Minimap:GetCenter()
+		local px, py = GetCursorPosition()
+		local scale = UIParent:GetEffectiveScale()
+		px = px / scale
+		py = py / scale
+		local angle = math.deg(math.atan2(py - my, px - mx))
+		if angle < 0 then
+			angle = angle + 360
+		end
+		PaniniClassicWoW_Config.minimapPos = angle
+		UpdatePosition(angle)
+	end)
 end)
 
 btn:SetScript("OnDragStop", function()
-    btn:SetScript("OnUpdate", nil)
+	btn:SetScript("OnUpdate", nil)
 end)
 
 btn:SetScript("OnClick", function()
-    PaniniClassicWoW.ToggleSettings()
+	PaniniClassicWoW.ToggleSettings()
 end)
 
 btn:SetScript("OnEnter", function()
-    GameTooltip:SetOwner(this, "ANCHOR_LEFT")
-    GameTooltip:AddLine("Panini Projection", 1, 0.85, 0)
-    GameTooltip:AddLine("Left-click to open settings", 1, 1, 1)
-    GameTooltip:Show()
+	GameTooltip:SetOwner(this, "ANCHOR_LEFT")
+	GameTooltip:AddLine("Panini Projection", 1, 0.85, 0)
+	GameTooltip:AddLine("Left-click to open settings", 1, 1, 1)
+	GameTooltip:Show()
 end)
 
 btn:SetScript("OnLeave", function()
-    GameTooltip:Hide()
+	GameTooltip:Hide()
 end)
 
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("PLAYER_LOGIN")
 loader:SetScript("OnEvent", function()
-    local angle = DEFAULT_ANGLE
-    if PaniniClassicWoW_Config and PaniniClassicWoW_Config.minimapPos then
-        angle = PaniniClassicWoW_Config.minimapPos
-    end
-    UpdatePosition(angle)
-    btn:Show()
+	local angle = DEFAULT_ANGLE
+	if PaniniClassicWoW_Config and PaniniClassicWoW_Config.minimapPos then
+		angle = PaniniClassicWoW_Config.minimapPos
+	end
+	UpdatePosition(angle)
+	btn:Show()
 end)
