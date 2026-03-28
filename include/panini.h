@@ -60,7 +60,6 @@ void InstallRenderWorldHook();
 #include "panini_math.h"
 
 float ReadCameraFov();
-float ReadCameraAspect();
 IDirect3DDevice9* GetWoWDevice();
 bool  IsWorldActive();
 void  UpdateCameraFov();

@@ -120,7 +120,8 @@ static void ApplyPostProcess(IDirect3DDevice9* dev) {
     PostProcessConfig cfg;
     PostProcessConfig_ReadFromCVars(&cfg);
 
-    if (cfg.strength != cfg.strength || cfg.strength < 0.0f) cfg.strength = 0.5f;
+    if (!cfg.paniniEnabled) cfg.strength = 0.0f;
+    if (cfg.strength != cfg.strength || cfg.strength < 0.0f) cfg.strength = 0.01f;
     if (cfg.strength > 1.0f) cfg.strength = 1.0f;
     if (cfg.verticalComp != cfg.verticalComp) cfg.verticalComp = 0.0f;
     if (cfg.verticalComp < -1.0f) cfg.verticalComp = -1.0f;

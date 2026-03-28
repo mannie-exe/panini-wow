@@ -232,15 +232,9 @@ sFill:SetPoint("TOPLEFT", 20, y)
 y = y - 60
 
 local sFov = CreateSlider(pageSettings, "PaniniSettingsFov",
-    "FOV (rad)", "0.1", "3.09", 0.1, 3.09,
+    "FOV (rad)", "0.001", "3.133", 0.001, 3.133,
     "fov", "paniniFov",
-    { onValueChanged = function(value)
-        local c = GetConfig()
-        if c.enabled then
-            SafeSetCVar("FoV", tostring(value))
-            PaniniClassicWoW.UpdateFovTracking(value)
-        end
-    end }
+    {}
 )
 sFov:SetPoint("TOPLEFT", 20, y)
 
