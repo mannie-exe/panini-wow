@@ -351,14 +351,6 @@ local aboutTitle = pageDebug:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 aboutTitle:SetPoint("TOP", pageDebug, "TOP", 0, y2)
 aboutTitle:SetJustifyH("CENTER")
 
-local dllVersion = SafeGetCVar("ppVersion")
-local versionText
-if dllVersion and dllVersion ~= "" then
-	versionText = "|cFFFFD900v" .. dllVersion .. "|r"
-else
-	versionText = "|cFFFF4D4DDLL NOT LOADED|r"
-end
-aboutTitle:SetText(versionText)
 
 y2 = y2 - 16
 
@@ -376,6 +368,7 @@ aboutUrl:SetFont("Fonts\\FRIZQT__.TTF", 10)
 aboutUrl:SetJustifyH("CENTER")
 aboutUrl:SetTextInsets(4, 4, 3, 3)
 aboutUrl:SetAutoFocus(false)
+aboutUrl:SetEditable(false)
 aboutUrl:SetText("https://github.com/mannie-exe/panini-classic-wow")
 aboutUrl:SetTextColor(0.5, 0.5, 0.5, 1)
 aboutUrl:SetBackdrop({
@@ -411,6 +404,7 @@ aboutSetup:SetText(
 )
 
 -- Compute dialog height from page content + chrome (title bar 42 + tab strip 23)
+-- 5 lines of GameFontDisableSmall (~12px each) in aboutSetup FontString
 local setupTextHeight = 60
 local settingsContentHeight = math.abs(y)
 local debugContentHeight = math.abs(y2) + setupTextHeight
@@ -490,6 +484,13 @@ function PaniniSettingsDialog_OnShow()
 
 	local uvVal = SafeGetCVar("ppDebugUV")
 	cbUV:SetChecked(uvVal == "1" and 1 or nil)
+
+	local dllVersion = SafeGetCVar("ppVersion")
+	if dllVersion and dllVersion ~= "" then
+		aboutTitle:SetText("|cFFFFD900v" .. dllVersion .. "|r")
+	else
+		aboutTitle:SetText("|cFFFF4D4DDLL NOT LOADED|r")
+	end
 end
 
 dialog:SetScript("OnShow", PaniniSettingsDialog_OnShow)

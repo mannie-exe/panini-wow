@@ -372,8 +372,9 @@ void InstallRenderWorldHook() {
         return;
     }
 
-    // No existing hook — install our own 9-byte trampoline
-    // Trampoline: execute saved 9 bytes, then JMP to target+9
+    // No existing hook — install our own 9-byte trampoline.
+    // Trampoline: execute saved 9 bytes, then JMP to target+9.
+    // NULL base is safe: 32-bit process, all addresses within JMP rel32 range.
     g_trampoline = reinterpret_cast<uint8_t*>(
         VirtualAlloc(NULL, 32, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE));
     if (!g_trampoline) {

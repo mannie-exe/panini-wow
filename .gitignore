@@ -11,3 +11,4 @@ build/
 
 # Vendored build tools (force-tracked)
 !tools/fxc2/d3dcompiler_47.dll
+.vscode/
