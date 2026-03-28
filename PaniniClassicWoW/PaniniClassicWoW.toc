@@ -6,3 +6,4 @@
 ## SavedVariables: PaniniClassicWoW_Config
 PaniniClassicWoW.lua
 PaniniClassicWoW_Settings.lua
+PaniniClassicWoW_Minimap.lua
