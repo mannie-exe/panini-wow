@@ -253,10 +253,12 @@ SlashCmdList["PANINI"] = function(msg)
             end
             DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini|r dialog position reset to center")
         elseif val == "settings" or val == nil then
+            local savedPos = PaniniClassicWoW_Config.minimapPos
             PaniniClassicWoW_Config = {}
             for k, v in pairs(defaults) do
                 PaniniClassicWoW_Config[k] = v
             end
+            PaniniClassicWoW_Config.minimapPos = savedPos
             SyncCVarsToDLL()
             SafeSetCVar("ppDebugTint", "0")
             SafeSetCVar("ppDebugUV", "0")
