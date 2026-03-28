@@ -32,6 +32,7 @@ jobs:
         with:
           path: ~/.cache/CPM
           key: cpm-${{ hashFiles('CMakeLists.txt', 'cmake/**') }}
+          restore-keys: cpm-
 
       - run: mise run build:release
 
