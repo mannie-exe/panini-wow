@@ -41,8 +41,8 @@ cmake --build build/cross-mingw32
 alias = "t"
 description = "Run unit tests (cross-compiled, via Wine)"
 depends = ["build"]
-run = "WINEDEBUG=-all ctest --test-dir build/cross-mingw32-debug --output-on-failure"
-run_windows = "ctest --test-dir build/cross-mingw32-debug --output-on-failure"
+run = "WINEDEBUG=-all wine build/cross-mingw32-debug/bin/PaniniTests.exe"
+run_windows = "build\\cross-mingw32-debug\\bin\\PaniniTests.exe"
 
 [tasks.shader]
 description = "Compile HLSL shaders to bytecode headers"
