@@ -16,19 +16,19 @@ local overlay = btn:CreateTexture(nil, "OVERLAY")
 overlay:SetWidth(53)
 overlay:SetHeight(53)
 overlay:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-overlay:SetPoint("TOPLEFT")
+overlay:SetPoint("TOPLEFT", btn, "TOPLEFT", 0, 0)
 
 local bg = btn:CreateTexture(nil, "BACKGROUND")
 bg:SetWidth(20)
 bg:SetHeight(20)
 bg:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
-bg:SetPoint("TOPLEFT", 7, -5)
+bg:SetPoint("TOPLEFT", btn, "TOPLEFT", 7, -5)
 
 local icon = btn:CreateTexture(nil, "ARTWORK")
 icon:SetWidth(17)
 icon:SetHeight(17)
 icon:SetTexture("Interface\\Icons\\INV_Misc_Food_33")
-icon:SetPoint("TOPLEFT", 7, -6)
+icon:SetPoint("TOPLEFT", btn, "TOPLEFT", 7, -6)
 
 btn:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
 
@@ -48,7 +48,7 @@ btn:SetScript("OnDragStart", function()
     btn:SetScript("OnUpdate", function()
         local mx, my = Minimap:GetCenter()
         local px, py = GetCursorPosition()
-        local scale = Minimap:GetEffectiveScale()
+        local scale = UIParent:GetEffectiveScale()
         px = px / scale
         py = py / scale
         local angle = math.deg(math.atan2(py - my, px - mx))
