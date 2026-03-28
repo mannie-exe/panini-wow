@@ -1,4 +1,4 @@
-// uv_vis.hlsl — UV displacement visualization shader
+// uv_vis.hlsl: UV displacement visualization shader
 // Target: ps_3_0
 //
 // Maps panini UV displacement delta to RGB:

@@ -1,4 +1,4 @@
-// cas.hlsl — Contrast Adaptive Sharpening (CAS) for D3D9
+// cas.hlsl: Contrast Adaptive Sharpening (CAS) for D3D9
 // Target: ps_3_0
 // Ported from butterw CAS dx9 (gist ceb89a68bc0aa3b0e317660fb4bacaa3)
 //

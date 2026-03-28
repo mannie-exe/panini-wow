@@ -1,4 +1,4 @@
-// fxaa.hlsl — FXAA 3.11 for D3D9 (Timothy Lottes, NVIDIA)
+// fxaa.hlsl: FXAA 3.11 for D3D9 (Timothy Lottes, NVIDIA)
 // Target: ps_3_0
 // Simplified single-pass port. Quality preset 12 (5 search steps).
 //
@@ -75,7 +75,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float edgeLuma = (lumaC + lumaEdgeSide) * 0.5;
     float gradThresh = lumaRange * 0.25;
 
-    // Endpoint search — manually unrolled for ps_3_0
+    // Endpoint search: manually unrolled for ps_3_0
     // Positive direction: steps at 1.0, 1.5, 2.0, 4.0, 12.0
     float2 uvP = edgeUV + edgeStep * 1.0;
     float lumaEndP = tex2D(inputTex, uvP).g - edgeLuma;
