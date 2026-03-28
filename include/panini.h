@@ -10,14 +10,12 @@ namespace wow {
 constexpr uintptr_t CVarLookup_Addr    = 0x0063DEC0;
 constexpr uintptr_t CVarRegister_Addr  = 0x0063DB90;
 
-constexpr uintptr_t CVar_StringValue   = 0x20;
 constexpr uintptr_t CVar_FloatValue    = 0x24;
 constexpr uintptr_t CVar_IntValue      = 0x28;
 
 constexpr uintptr_t WorldFrame_Ptr     = 0x00B4B2BC;
 constexpr uintptr_t ActiveCamera_Off   = 0x65B8;
 constexpr uintptr_t Camera_FOV_Off     = 0x40;
-constexpr uintptr_t Camera_Aspect_Off  = 0x44;
 
 constexpr uintptr_t CGxDeviceD3d_Ptr   = 0x00C0ED38;
 constexpr uintptr_t D3DDevice_Off      = 0x38A8;
