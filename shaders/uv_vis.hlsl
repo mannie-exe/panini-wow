@@ -7,11 +7,9 @@
 //   Blue  = displacement vector length
 //
 // Register mapping:
-//   s0  = input texture (panini output)
 //   c0  = { D, halfTanFov, fillZoom, enabled }
 //   c1  = { S, aspect, 0, 0 }
 
-sampler2D sceneTex : register(s0);
 float4 u_params : register(c0);
 float4 u_extra  : register(c1);
 
