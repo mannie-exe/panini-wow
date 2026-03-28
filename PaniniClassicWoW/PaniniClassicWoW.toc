@@ -1,9 +1,8 @@
 ## Interface: 11200
 ## Title: PaniniClassicWoW
-## Notes: Panini projection post-process configuration. Requires SuperWoW.
+## Notes: Panini projection post-process configuration.
 ## Author: zer0cell
 ## Version: 0.2.0
 ## SavedVariables: PaniniClassicWoW_Config
-## RequiredDeps: SuperAPI
 PaniniClassicWoW.lua
 PaniniClassicWoW_Settings.lua

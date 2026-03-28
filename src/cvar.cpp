@@ -13,29 +13,27 @@ static const auto CVarLookup   = reinterpret_cast<CVarLookup_t>(wow::CVarLookup_
 static const auto CVarRegister = reinterpret_cast<CVarRegister_t>(wow::CVarRegister_Addr);
 
 void CVar_RegisterAll() {
-    char n1[]  = "paniniEnabled";
-    char n2[]  = "paniniStrength";
-    char n3[]  = "paniniVertComp";
-    char n4[]  = "paniniFill";
-    char n5[]  = "paniniFov";
-    char n6[]  = "paniniUserFov";
-    char n7[]  = "ppFxaa";
-    char n8[]  = "ppSharpen";
-    char n9[]  = "ppDebugTint";
-    char n10[] = "ppDebugUV";
+    char n1[] = "paniniEnabled";
+    char n2[] = "paniniStrength";
+    char n3[] = "paniniVertComp";
+    char n4[] = "paniniFill";
+    char n5[] = "paniniFov";
+    char n6[] = "ppFxaa";
+    char n7[] = "ppSharpen";
+    char n8[] = "ppDebugTint";
+    char n9[] = "ppDebugUV";
 
-    CVarRegister(n1,  nullptr, 0, "1",      nullptr, 5, 0, 0);
-    CVarRegister(n2,  nullptr, 0, "0.01",   nullptr, 5, 0, 0);
-    CVarRegister(n3,  nullptr, 0, "0.0",    nullptr, 5, 0, 0);
-    CVarRegister(n4,  nullptr, 0, "1.0",    nullptr, 5, 0, 0);
-    CVarRegister(n5,  nullptr, 0, "2.82",   nullptr, 5, 0, 0);
-    CVarRegister(n6,  nullptr, 0, "-1",     nullptr, 5, 0, 0);
-    CVarRegister(n7,  nullptr, 0, "1",      nullptr, 5, 0, 0);
-    CVarRegister(n8,  nullptr, 0, "0.2",    nullptr, 5, 0, 0);
-    CVarRegister(n9,  nullptr, 0, "0",      nullptr, 5, 0, 0);
-    CVarRegister(n10, nullptr, 0, "0",      nullptr, 5, 0, 0);
+    CVarRegister(n1, nullptr, 0, "1",    nullptr, 5, 0, 0);
+    CVarRegister(n2, nullptr, 0, "0.01", nullptr, 5, 0, 0);
+    CVarRegister(n3, nullptr, 0, "0.0",  nullptr, 5, 0, 0);
+    CVarRegister(n4, nullptr, 0, "1.0",  nullptr, 5, 0, 0);
+    CVarRegister(n5, nullptr, 0, "2.82", nullptr, 5, 0, 0);
+    CVarRegister(n6, nullptr, 0, "1",    nullptr, 5, 0, 0);
+    CVarRegister(n7, nullptr, 0, "0.2",  nullptr, 5, 0, 0);
+    CVarRegister(n8, nullptr, 0, "0",    nullptr, 5, 0, 0);
+    CVarRegister(n9, nullptr, 0, "0",    nullptr, 5, 0, 0);
 
-    LOG_INFO("cvar", "registered 10 CVars");
+    LOG_INFO("cvar", "registered 9 CVars");
 }
 
 float CVar_GetFloat(const char* name, float fallback) {
