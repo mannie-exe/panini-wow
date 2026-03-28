@@ -1,3 +1,6 @@
+[settings]
+windows_default_inline_shell_args = "pwsh -NoProfile -NonInteractive -Command"
+
 [tools]
 cmake = "latest"
 ninja = "latest"
@@ -5,48 +8,60 @@ ninja = "latest"
 [env]
 CPM_SOURCE_CACHE = "~/.cache/CPM"
 
-# Build
-
 [tasks.clean]
 description = "Remove build artifacts"
 run = "rm -rf build"
 run_windows = "if (Test-Path build) { Remove-Item -Recurse -Force build }"
 
-[tasks.configure]
-alias = "c"
-description = "Configure CMake build"
-run = "sh tasks/configure.sh"
-run_windows = "& .\\tasks\\configure.ps1"
-
 [tasks.build]
-alias = ["b", "bd", "build:debug"]
-description = "Configure and build (Debug logging, optimized)"
-run = "CONFIGURE_PRESET=cross-mingw32-debug BUILD_PRESET=debug sh tasks/build.sh"
-run_windows = "$env:CONFIGURE_PRESET='cross-mingw32-debug'; $env:BUILD_PRESET='debug'; & .\\tasks\\build.ps1"
+alias = ["b", "bd"]
+description = "Build debug (cross-mingw32, debug logging)"
+run = """
+[ -d build/cross-mingw32-debug ] || cmake --preset cross-mingw32-debug
+cmake --build build/cross-mingw32-debug
+"""
+run_windows = """
+if (-not (Test-Path build/cross-mingw32-debug)) { cmake --preset cross-mingw32-debug }
+cmake --build build/cross-mingw32-debug
+"""
 
 [tasks."build:release"]
 alias = "br"
-description = "Configure and build (Release)"
-run = "CONFIGURE_PRESET=cross-mingw32 BUILD_PRESET=release sh tasks/build.sh"
-run_windows = "$env:CONFIGURE_PRESET='cross-mingw32'; $env:BUILD_PRESET='release'; & .\\tasks\\build.ps1"
+description = "Build release (cross-mingw32)"
+run = """
+[ -d build/cross-mingw32 ] || cmake --preset cross-mingw32
+cmake --build build/cross-mingw32
+"""
+run_windows = """
+if (-not (Test-Path build/cross-mingw32)) { cmake --preset cross-mingw32 }
+cmake --build build/cross-mingw32
+"""
 
 [tasks.test]
 alias = "t"
 description = "Run unit tests (cross-compiled, via Wine)"
 depends = ["build"]
 run = "WINEDEBUG=-all ctest --test-dir build/cross-mingw32-debug --output-on-failure"
-
-# Shaders
+run_windows = "ctest --test-dir build/cross-mingw32-debug --output-on-failure"
 
 [tasks.shader]
-description = "Compile HLSL shader to bytecode header"
-run = "sh tasks/shader.sh"
-run_windows = "& .\\tasks\\shader.ps1"
-
-# Install
+description = "Compile HLSL shaders to bytecode headers"
+run = """
+[ -d build/cross-mingw32-debug ] || cmake --preset cross-mingw32-debug
+cmake --build build/cross-mingw32-debug --target shaders
+"""
 
 [tasks.install]
-description = "Copy DLL + addon to TurtleWoW directory"
+description = "Copy DLL + addon to TurtleWoW"
 depends = ["build"]
-run = "sh tasks/install.sh"
-run_windows = "& .\\tasks\\install.ps1"
+run = """
+TURTLEWOW="${TURTLEWOW_PATH:-$HOME/production/wow/TurtleWoW}"
+[ -d "$TURTLEWOW" ] || { echo "TurtleWoW not found at $TURTLEWOW"; exit 1; }
+DLL=build/cross-mingw32-debug/bin/PaniniWoW.dll
+[ -f "$DLL" ] || { echo "DLL not found. Run mise build first."; exit 1; }
+cp "$DLL" "$TURTLEWOW/mods/PaniniWoW.dll"
+mkdir -p "$TURTLEWOW/Interface/AddOns/PaniniClassicWoW"
+cp PaniniClassicWoW/*.toc PaniniClassicWoW/*.lua "$TURTLEWOW/Interface/AddOns/PaniniClassicWoW/"
+grep -q "mods/PaniniWoW.dll" "$TURTLEWOW/dlls.txt" 2>/dev/null || echo "NOTE: Add mods/PaniniWoW.dll to $TURTLEWOW/dlls.txt"
+echo "Installed."
+"""

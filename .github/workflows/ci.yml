@@ -1,0 +1,43 @@
+name: CI
+on:
+  push:
+    branches: [main]
+    paths: [src/**, include/**, shaders/**, tests/**, CMakeLists.txt, cmake/**, CMakePresets.json]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: jdx/mise-action@v4
+      - name: Install MinGW + Wine
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gcc-mingw-w64-i686 g++-mingw-w64-i686 wine wine32
+      - name: Init Wine prefix
+        run: WINEDEBUG=-all wineboot --init
+        env:
+          DISPLAY: ""
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/CPM
+          key: cpm-${{ hashFiles('CMakeLists.txt', 'cmake/**') }}
+      - run: mise run build:release
+      - run: mise run build
+      - run: mise run test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PaniniWoW-${{ github.sha }}
+          path: build/cross-mingw32/bin/PaniniWoW.dll
