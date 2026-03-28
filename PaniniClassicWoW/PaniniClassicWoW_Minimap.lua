@@ -8,6 +8,9 @@ btn:SetWidth(31)
 btn:SetHeight(31)
 btn:SetFrameStrata("MEDIUM")
 btn:SetFrameLevel(8)
+btn:EnableMouse(true)
+btn:SetMovable(true)
+btn:RegisterForClicks("LeftButtonUp")
 
 local overlay = btn:CreateTexture(nil, "OVERLAY")
 overlay:SetWidth(53)
@@ -30,12 +33,14 @@ icon:SetPoint("TOPLEFT", 7, -6)
 btn:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
 
 local function UpdatePosition(angle)
-    local rad = math.rad(angle)
-    local x = math.cos(rad) * RADIUS
-    local y = math.sin(rad) * RADIUS
     btn:ClearAllPoints()
-    btn:SetPoint("CENTER", Minimap, "CENTER", x, y)
+    btn:SetPoint("CENTER", Minimap, "CENTER",
+        math.cos(math.rad(angle)) * RADIUS,
+        math.sin(math.rad(angle)) * RADIUS)
 end
+
+UpdatePosition(DEFAULT_ANGLE)
+btn:Show()
 
 btn:RegisterForDrag("LeftButton")
 
@@ -80,4 +85,5 @@ loader:SetScript("OnEvent", function()
         angle = PaniniClassicWoW_Config.minimapPos
     end
     UpdatePosition(angle)
+    btn:Show()
 end)
