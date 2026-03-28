@@ -1,6 +1,5 @@
-# Windows overrides
-# Requires: Visual Studio C++ workload OR MinGW-w64, Developer PowerShell
-# fxc.exe available natively via Windows SDK (no Wine needed)
+[settings]
+windows_default_inline_shell_args = "pwsh -NoProfile -NonInteractive -Command"
 
 [env]
-CPM_SOURCE_CACHE = "{{ env.USERPROFILE }}/.cache/CPM"
+CPM_SOURCE_CACHE = "{{ env.USERPROFILE }}\\.cache\\CPM"

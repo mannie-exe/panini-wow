@@ -1,0 +1,60 @@
+name: Release
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: jdx/mise-action@v4
+
+      - name: Install MinGW + Wine
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gcc-mingw-w64-i686 g++-mingw-w64-i686 wine wine32
+
+      - name: Init Wine prefix
+        run: WINEDEBUG=-all wineboot --init
+        env:
+          DISPLAY: ""
+
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/CPM
+          key: cpm-${{ hashFiles('CMakeLists.txt', 'cmake/**') }}
+
+      - run: mise run build:release
+
+      - run: mise run test
+
+      - name: Package
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          STAGING="PaniniWoW-v${VERSION}"
+          mkdir -p "${STAGING}/mods"
+          mkdir -p "${STAGING}/Interface/AddOns/PaniniClassicWoW"
+          cp build/cross-mingw32/bin/PaniniWoW.dll "${STAGING}/mods/"
+          cp PaniniClassicWoW/*.toc PaniniClassicWoW/*.lua "${STAGING}/Interface/AddOns/PaniniClassicWoW/"
+          zip -r "${STAGING}.zip" "${STAGING}"
+
+      - uses: orhun/git-cliff-action@v4
+        id: cliff
+        with:
+          config: cliff.toml
+          args: --latest --strip header
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          body: ${{ steps.cliff.outputs.content }}
+          files: PaniniWoW-*.zip
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
