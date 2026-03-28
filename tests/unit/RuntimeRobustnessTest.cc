@@ -7,7 +7,7 @@
 // This file tests runtime robustness properties of the panini config pipeline.
 //
 // The clamping logic in hooks.cpp ApplyPostProcess is:
-//   strength:     NaN -> 0.5,  <0 -> 0.5,  >1 -> 1
+//   strength:     NaN -> 0.01, <0 -> 0.01, >1 -> 1
 //   verticalComp: NaN -> 0.0,  <-1 -> -1,  >1 -> 1
 //   fill:         NaN -> 0.8,  <0 -> 0.8,  >1 -> 1
 //

@@ -31,15 +31,26 @@ bool IsWorldActive() {
     return pWF != nullptr;
 }
 
+static bool s_paniniWasEnabled = false;
+
 void UpdateCameraFov() {
-    if (CVar_GetInt("paniniEnabled", 1) == 0) return;
+    bool enabled = CVar_GetInt("paniniEnabled", 1) != 0;
 
     auto pWF = *reinterpret_cast<uint8_t**>(wow::WorldFrame_Ptr);
     if (!pWF) return;
     auto pCam = *reinterpret_cast<uint8_t**>(pWF + wow::ActiveCamera_Off);
     if (!pCam) return;
 
-    float pf = CVar_GetFloat("paniniFov", 2.82f);
-    if (IsValidFov(pf))
-        *reinterpret_cast<float*>(pCam + wow::Camera_FOV_Off) = pf;
+    if (enabled) {
+        float pf = CVar_GetFloat("paniniFov", 2.82f);
+        if (IsValidFov(pf))
+            *reinterpret_cast<float*>(pCam + wow::Camera_FOV_Off) = pf;
+    } else if (s_paniniWasEnabled) {
+        // Restore vanilla FoV to camera memory on disable transition
+        float fov = CVar_GetFloat("FoV", 1.5708f);
+        if (IsValidFov(fov))
+            *reinterpret_cast<float*>(pCam + wow::Camera_FOV_Off) = fov;
+    }
+
+    s_paniniWasEnabled = enabled;
 }

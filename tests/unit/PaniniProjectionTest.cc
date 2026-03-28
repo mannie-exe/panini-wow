@@ -126,12 +126,12 @@ TEST_F(PaniniProjectionTest, DOne_MaximumDistortion) {
     EXPECT_GT(ray.x, 0.0f);
 }
 
-TEST_F(PaniniProjectionTest, VerticalComp_SZero_IsIdentity) {
-    // S=0 produces no vertical compensation: y *= lerp(1.0, rsqrt(..), 0) = 1.0.
+TEST_F(PaniniProjectionTest, VerticalComp_SZero_NoCompression) {
+    // S=0: no vertical compensation. Y should be larger than S=1 (which compresses).
     float D = 0.5f;
-    Vec3 rayS0 = paniniInverse(1.0f, 0.5f, D, 0.0f);
-    Vec3 rayS0Direct = paniniInverse(1.0f, 0.5f, D, 0.0f);
-    EXPECT_FLOAT_EQ(rayS0.y, rayS0Direct.y);
+    Vec3 rayNoComp = paniniInverse(1.0f, 0.5f, D, 0.0f);
+    Vec3 rayComp = paniniInverse(1.0f, 0.5f, D, 1.0f);
+    EXPECT_GT(fabsf(rayNoComp.y), fabsf(rayComp.y));
 }
 
 TEST_F(PaniniProjectionTest, VerticalComp_SPositive_ReducesStretching) {
