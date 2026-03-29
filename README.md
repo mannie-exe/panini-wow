@@ -31,31 +31,28 @@ Grab the latest release from [Releases](https://github.com/mannie-exe/panini-cla
 
 Click the minimap button (sweet roll icon) or type `/panini` to open the settings dialog. Use `/panini help` for the full command list.
 
-## Architecture
+## How It Works
 
 ```mermaid
-flowchart TD
-    A[Lua Addon] -->|SavedVariables → CVar sync| B[WoW CVar System]
-    B -->|reads per frame| C[DLL: RenderWorld Hook]
-    C --> D[UpdateCameraFov]
-    D --> E[Original RenderWorld Chain]
-    E --> F[ApplyPostProcess]
-    F --> G["Pass 1: Panini (tex2Dgrad)"]
-    G --> H[Pass 2: FXAA]
-    H --> I[Pass 3: CAS]
-    I --> J[UI Draws on Top]
+flowchart LR
+    subgraph WoW["WoW Renders Frame"]
+        A[3D World]
+    end
 
-    style A fill:#2d333b,stroke:#444,color:#e6edf3
-    style B fill:#2d333b,stroke:#444,color:#e6edf3
-    style C fill:#1a4730,stroke:#3fb950,color:#e6edf3
-    style F fill:#1a4730,stroke:#3fb950,color:#e6edf3
-    style G fill:#30363d,stroke:#8b949e,color:#e6edf3
-    style H fill:#30363d,stroke:#8b949e,color:#e6edf3
-    style I fill:#30363d,stroke:#8b949e,color:#e6edf3
-    style J fill:#2d333b,stroke:#444,color:#e6edf3
+    subgraph PaniniWoW["PaniniWoW Post-Process"]
+        B["Panini Projection\n(reduce edge distortion)"]
+        C["FXAA\n(smooth edges)"]
+        D["CAS\n(sharpen details)"]
+    end
+
+    subgraph Display["Display"]
+        E["UI + HUD\n(undistorted)"]
+    end
+
+    A --> B --> C --> D --> E
 ```
 
-The DLL hooks `CGWorldFrame::RenderWorld` via a 9-byte trampoline (or JMP chain if another mod hooked first), plus `EndScene`/`Reset` via vtable patching. The addon communicates with the DLL through WoW's native CVar system; 9 CVars control the post-process pipeline at runtime.
+The DLL hooks into WoW's render pipeline between world rendering and UI drawing. Three pixel shaders run in sequence on the rendered frame; the UI draws on top undistorted. All settings are configurable in-game through the addon's settings dialog or slash commands.
 
 ## Building
 
