@@ -6,7 +6,7 @@ build/
 *.log
 .cache/
 
-# Wine prefix artifacts
+# Wine prefix (build-time shader compilation)
 .wine/
 
 # Vendored build tools (force-tracked)
