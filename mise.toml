@@ -55,29 +55,3 @@ if (-not (Test-Path build/cross-mingw32-debug)) { cmake --preset cross-mingw32-d
 cmake --build build/cross-mingw32-debug --target shaders
 """
 
-[tasks.install]
-description = "Copy DLL + addon to TurtleWoW"
-depends = ["build"]
-run = """
-TURTLEWOW="${TURTLEWOW_PATH:-$HOME/production/wow/TurtleWoW}"
-[ -d "$TURTLEWOW" ] || { echo "TurtleWoW not found at $TURTLEWOW"; exit 1; }
-DLL=build/cross-mingw32-debug/bin/PaniniClassicWoW.dll
-[ -f "$DLL" ] || { echo "DLL not found. Run mise build first."; exit 1; }
-cp "$DLL" "$TURTLEWOW/mods/PaniniClassicWoW.dll"
-mkdir -p "$TURTLEWOW/Interface/AddOns/PaniniClassicWoW"
-cp PaniniClassicWoW/*.toc PaniniClassicWoW/*.lua "$TURTLEWOW/Interface/AddOns/PaniniClassicWoW/"
-grep -q "mods/PaniniClassicWoW.dll" "$TURTLEWOW/dlls.txt" 2>/dev/null || echo "NOTE: Add mods/PaniniClassicWoW.dll to $TURTLEWOW/dlls.txt"
-echo "Installed."
-"""
-run_windows = """
-$TurtleWoW = if ($env:TURTLEWOW_PATH) { $env:TURTLEWOW_PATH } else { "$env:USERPROFILE\\production\\wow\\TurtleWoW" }
-if (-not (Test-Path $TurtleWoW)) { Write-Error "TurtleWoW not found at $TurtleWoW"; exit 1 }
-$DLL = "build\\cross-mingw32-debug\\bin\\PaniniClassicWoW.dll"
-if (-not (Test-Path $DLL)) { Write-Error "DLL not found. Run mise build first."; exit 1 }
-Copy-Item $DLL "$TurtleWoW\\mods\\PaniniClassicWoW.dll" -Force
-New-Item -ItemType Directory -Force -Path "$TurtleWoW\\Interface\\AddOns\\PaniniClassicWoW" | Out-Null
-Copy-Item "PaniniClassicWoW\\*" "$TurtleWoW\\Interface\\AddOns\\PaniniClassicWoW\\" -Force
-$dlls = Get-Content "$TurtleWoW\\dlls.txt" -ErrorAction SilentlyContinue
-if ($dlls -notcontains "mods/PaniniClassicWoW.dll") { Write-Host "NOTE: Add mods/PaniniClassicWoW.dll to $TurtleWoW\\dlls.txt" }
-Write-Host "Installed."
-"""

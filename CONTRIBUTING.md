@@ -24,7 +24,6 @@ mise run test
 | `build:release` | `br` | Build release DLL (cross-mingw32) |
 | `test` | `t` | Run unit tests (cross-compiled, via Wine) |
 | `shader` | *none* | Compile HLSL shaders to bytecode headers |
-| `install` | *none* | Copy DLL + addon to TurtleWoW |
 | `clean` | *none* | Remove build artifacts |
 
 ## Testing
