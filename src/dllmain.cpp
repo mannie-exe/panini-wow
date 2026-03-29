@@ -7,45 +7,18 @@ constexpr int VTABLE_ENDSCENE = 42;
 constexpr int VTABLE_RESET    = 16;
 
 static bool InstallHooks() {
-    IDirect3D9* pD3D = Direct3DCreate9(D3D_SDK_VERSION);
-    if (!pD3D) {
-        LOG_INFO("init", "Direct3DCreate9 failed");
+    IDirect3DDevice9* dev = nullptr;
+    for (int i = 0; i < 600 && !dev; i++) {
+        dev = GetWoWDevice();
+        if (!dev) Sleep(100);
+    }
+    if (!dev) {
+        LOG_INFO("init", "WoW D3D9 device not found after 60s");
         return false;
     }
+    LOG_INFO("init", "found WoW device at %p", dev);
 
-    HWND hwnd = NULL;
-    for (int i = 0; i < 120 && !hwnd; i++) {
-        hwnd = FindWindowA("GxWindowClass", NULL);
-        if (!hwnd)
-            hwnd = FindWindowA(NULL, "World of Warcraft");
-        if (!hwnd) Sleep(500);
-    }
-    if (!hwnd) {
-        LOG_INFO("init", "WoW window not found after 60s");
-        pD3D->Release();
-        return false;
-    }
-    LOG_INFO("init", "found WoW window HWND=%p", hwnd);
-
-    D3DPRESENT_PARAMETERS pp = {};
-    pp.Windowed         = TRUE;
-    pp.SwapEffect       = D3DSWAPEFFECT_DISCARD;
-    pp.hDeviceWindow    = hwnd;
-    pp.BackBufferFormat = D3DFMT_UNKNOWN;
-    pp.BackBufferCount  = 1;
-
-    IDirect3DDevice9* pDummy = NULL;
-    HRESULT hr = pD3D->CreateDevice(
-        D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hwnd,
-        D3DCREATE_SOFTWARE_VERTEXPROCESSING, &pp, &pDummy
-    );
-    if (FAILED(hr)) {
-        LOG_INFO("init", "CreateDevice failed hr=0x%08X", (unsigned)hr);
-        pD3D->Release();
-        return false;
-    }
-
-    void** vtable = *reinterpret_cast<void***>(pDummy);
+    void** vtable = *reinterpret_cast<void***>(dev);
     g_pOriginalEndScene = reinterpret_cast<EndScene_t>(vtable[VTABLE_ENDSCENE]);
     g_pOriginalReset    = reinterpret_cast<Reset_t>(vtable[VTABLE_RESET]);
 
@@ -64,8 +37,6 @@ static bool InstallHooks() {
     LOG_INFO("init", "hooks installed: EndScene->%p Reset->%p",
             &Hooked_EndScene, &Hooked_Reset);
 
-    pDummy->Release();
-    pD3D->Release();
     return true;
 }
 
