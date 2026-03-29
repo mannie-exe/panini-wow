@@ -3,7 +3,7 @@
 FILE* g_logFile = nullptr;
 
 void LogInit() {
-    g_logFile = fopen("mods\\PaniniWoW.log", "w");
+    g_logFile = fopen("mods\\PaniniClassicWoW.log", "w");
 }
 
 void LogShutdown() {

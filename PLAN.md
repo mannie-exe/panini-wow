@@ -1,4 +1,4 @@
-# PaniniWoW Implementation Plan
+# PaniniClassicWoW Implementation Plan
 
 Panini projection post-process DLL for WoW 1.12.1 (TurtleWoW). Hooks CGWorldFrame::RenderWorld, applies cylindrical projection via pixel shader, configurable through in-game CVar system.
 

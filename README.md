@@ -1,6 +1,6 @@
 [![Build Status](https://img.shields.io/github/actions/workflow/status/mannie-exe/panini-classic-wow/ci.yml?branch=main&style=flat)](https://github.com/mannie-exe/panini-classic-wow/actions/workflows/ci.yml) [![Latest Release](https://img.shields.io/github/v/release/mannie-exe/panini-classic-wow?style=flat&include_prereleases)](https://github.com/mannie-exe/panini-classic-wow/releases/latest) [![License](https://img.shields.io/github/license/mannie-exe/panini-classic-wow?style=flat)](LICENSE)
 
-# PaniniWoW
+# Panini Projection
 
 Panini/cylindrical camera projection post-process mod for World of Warcraft 1.12.1 (TurtleWoW). Injects a D3D9 pixel shader pipeline after the world renders and before the UI draws, producing a wide field-of-view image with reduced peripheral distortion. Configurable in-game through a Lua addon with settings dialog and minimap button.
 
@@ -21,8 +21,8 @@ Grab the latest release from [Releases](https://github.com/mannie-exe/panini-cla
 
 ### Manual Setup
 
-1. Copy `PaniniWoW.dll` to `WoW/mods/`
-2. Add `mods/PaniniWoW.dll` to `WoW/dlls.txt`
+1. Copy `PaniniClassicWoW.dll` to `WoW/mods/`
+2. Add `mods/PaniniClassicWoW.dll` to `WoW/dlls.txt`
 3. Copy `PaniniClassicWoW/` to `WoW/Interface/AddOns/`
 4. Requires a `d3d9.dll` loader (DXVK or vanilla-tweaks)
 5. `/reload` or restart WoW
@@ -33,18 +33,26 @@ Click the minimap button (sweet roll icon) or type `/panini` to open the setting
 
 ## Architecture
 
-```
-Lua Addon (SavedVariables -> CVar sync) -> WoW CVar System <- DLL (reads per frame)
-                                                                |
-                                              RenderWorld hook (trampoline at 0x00482D70)
-                                              UpdateCameraFov: writes paniniFov to camera+0x40
-                                              calls original chain (3D renders)
-                                              ApplyPostProcess:
-                                                Pass 1: Panini (tex2Dgrad)
-                                                Pass 2: FXAA
-                                                Pass 3: CAS
-                                                                |
-                                              UI draws on top (undistorted)
+```mermaid
+flowchart TD
+    A[Lua Addon] -->|SavedVariables → CVar sync| B[WoW CVar System]
+    B -->|reads per frame| C[DLL: RenderWorld Hook]
+    C --> D[UpdateCameraFov]
+    D --> E[Original RenderWorld Chain]
+    E --> F[ApplyPostProcess]
+    F --> G["Pass 1: Panini (tex2Dgrad)"]
+    G --> H[Pass 2: FXAA]
+    H --> I[Pass 3: CAS]
+    I --> J[UI Draws on Top]
+
+    style A fill:#2d333b,stroke:#444,color:#e6edf3
+    style B fill:#2d333b,stroke:#444,color:#e6edf3
+    style C fill:#1a4730,stroke:#3fb950,color:#e6edf3
+    style F fill:#1a4730,stroke:#3fb950,color:#e6edf3
+    style G fill:#30363d,stroke:#8b949e,color:#e6edf3
+    style H fill:#30363d,stroke:#8b949e,color:#e6edf3
+    style I fill:#30363d,stroke:#8b949e,color:#e6edf3
+    style J fill:#2d333b,stroke:#444,color:#e6edf3
 ```
 
 The DLL hooks `CGWorldFrame::RenderWorld` via a 9-byte trampoline (or JMP chain if another mod hooked first), plus `EndScene`/`Reset` via vtable patching. The addon communicates with the DLL through WoW's native CVar system; 9 CVars control the post-process pipeline at runtime.
@@ -94,11 +102,6 @@ panini-classic-wow/
 | `/panini reset ui` | Reset dialog position to center |
 | `/panini status` | Show current settings |
 | `/panini cvars` | Show CVar readback from engine |
-
-## Platform
-
-- macOS: Apple Silicon via Wine + DXVK (Vulkan -> MoltenVK -> Metal)
-- Windows: native D3D9
 
 ## Contributing
 

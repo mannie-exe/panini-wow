@@ -1,4 +1,4 @@
-// panini.hlsl: PaniniWoW post-process pixel shader
+// panini.hlsl: PaniniClassicWoW post-process pixel shader
 // Target: ps_3_0 (D3D9 Shader Model 3.0)
 //
 // Applies panini/cylindrical projection to the rendered scene.

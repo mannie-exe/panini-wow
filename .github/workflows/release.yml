@@ -47,10 +47,10 @@ jobs:
       - name: Package
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          STAGING="PaniniWoW-v${VERSION}"
+          STAGING="PaniniClassicWoW-v${VERSION}"
           mkdir -p "${STAGING}/mods"
           mkdir -p "${STAGING}/Interface/AddOns/PaniniClassicWoW"
-          cp build/cross-mingw32/bin/PaniniWoW.dll "${STAGING}/mods/"
+          cp build/cross-mingw32/bin/PaniniClassicWoW.dll "${STAGING}/mods/"
           cp PaniniClassicWoW/*.toc PaniniClassicWoW/*.lua "${STAGING}/Interface/AddOns/PaniniClassicWoW/"
           zip -r "${STAGING}.zip" "${STAGING}"
 
@@ -63,5 +63,5 @@ jobs:
       - uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
         with:
           body: ${{ steps.cliff.outputs.content }}
-          files: PaniniWoW-*.zip
+          files: PaniniClassicWoW-*.zip
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}

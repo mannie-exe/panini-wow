@@ -400,8 +400,8 @@ aboutSetup:SetPoint("TOPRIGHT", pageDebug, "TOPRIGHT", -20, y2)
 aboutSetup:SetJustifyH("LEFT")
 aboutSetup:SetText(
 	"|cFFAAAAAASetup:|r\n"
-		.. "|cFF8080801.|r Copy PaniniWoW.dll to WoW/mods/\n"
-		.. '|cFF8080802.|r Add "mods/PaniniWoW.dll" to WoW/dlls.txt\n'
+		.. "|cFF8080801.|r Copy PaniniClassicWoW.dll to WoW/mods/\n"
+		.. '|cFF8080802.|r Add "mods/PaniniClassicWoW.dll" to WoW/dlls.txt\n'
 		.. "|cFF8080803.|r Requires d3d9.dll loader (DXVK or vanilla-tweaks)\n"
 		.. "|cFF8080804.|r /reload or restart WoW"
 )

@@ -41,5 +41,5 @@ jobs:
       - run: mise run test
       - uses: actions/upload-artifact@v4
         with:
-          name: PaniniWoW-${{ github.sha }}
-          path: build/cross-mingw32/bin/PaniniWoW.dll
+          name: PaniniClassicWoW-${{ github.sha }}
+          path: build/cross-mingw32/bin/PaniniClassicWoW.dll

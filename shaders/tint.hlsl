@@ -1,4 +1,4 @@
-// tint.hlsl: PaniniWoW debug shader
+// tint.hlsl: PaniniClassicWoW debug shader
 // Target: ps_3_0
 // Reduces red channel by 33%. Visible cyan/green tint confirms the full
 // shader pipeline (EndScene hook, StretchRect, shader load, quad draw).

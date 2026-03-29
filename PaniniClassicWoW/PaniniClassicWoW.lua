@@ -1,4 +1,4 @@
--- PaniniClassicWoW: configuration addon for PaniniWoW.dll.
+-- PaniniClassicWoW: configuration addon for PaniniClassicWoW.dll.
 
 local defaults = {
 	enabled = true,
@@ -98,10 +98,10 @@ frame:SetScript("OnEvent", function()
 		end
 		SyncCVarsToDLL()
 		if dllLoaded then
-			DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPaniniClassicWoW|r loaded. /panini for commands.")
+			DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini Projection|r loaded. /panini for commands.")
 		else
 			DEFAULT_CHAT_FRAME:AddMessage(
-				"|cff00ccffPaniniClassicWoW|r loaded (DLL not detected; settings saved locally)."
+				"|cff00ccffPanini Projection|r loaded (DLL not detected; settings saved locally)."
 			)
 		end
 	elseif event == "PLAYER_ENTERING_WORLD" then
@@ -269,7 +269,7 @@ SlashCmdList["PANINI"] = function(msg)
 	elseif cmd == "status" then
 		local tintVal = SafeGetCVar("ppDebugTint") or "0"
 		local uvVal = SafeGetCVar("ppDebugUV") or "0"
-		DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPaniniClassicWoW|r status:")
+		DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini Projection|r status:")
 		DEFAULT_CHAT_FRAME:AddMessage("  enabled: " .. tostring(c.enabled))
 		DEFAULT_CHAT_FRAME:AddMessage("  debug tint: " .. (tintVal == "1" and "on" or "off"))
 		DEFAULT_CHAT_FRAME:AddMessage("  debug uv: " .. (uvVal == "1" and "on" or "off"))
@@ -314,7 +314,7 @@ SlashCmdList["PANINI"] = function(msg)
 		DEFAULT_CHAT_FRAME:AddMessage("  ppDebugTint: " .. tostring(SafeGetCVar("ppDebugTint") or "0"))
 		DEFAULT_CHAT_FRAME:AddMessage("  ppDebugUV: " .. tostring(SafeGetCVar("ppDebugUV") or "0"))
 	elseif cmd == "help" then
-		DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPaniniClassicWoW|r commands:")
+		DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffPanini Projection|r commands:")
 		DEFAULT_CHAT_FRAME:AddMessage("  /panini               open settings")
 		DEFAULT_CHAT_FRAME:AddMessage("  /panini settings      open settings")
 		DEFAULT_CHAT_FRAME:AddMessage("  /panini help          show this help")

@@ -71,7 +71,7 @@ static bool InstallHooks() {
 
 static DWORD WINAPI InitThread(LPVOID) {
     LogInit();
-    LOG_INFO("init", "PaniniWoW " PANINI_VERSION " initializing (SSE2 math)");
+    LOG_INFO("init", "PaniniClassicWoW " PANINI_VERSION " initializing (SSE2 math)");
 
     if (!InstallHooks()) {
         LOG_INFO("init", "D3D hook installation failed");
