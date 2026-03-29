@@ -107,6 +107,10 @@ panini-classic-wow/
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow and code style guidelines.
 
+## Credits
+
+See [CREDITS.md](CREDITS.md) for acknowledgements of the research, tooling, and community work this project builds upon.
+
 ## License
 
 [Apache 2.0](LICENSE)
