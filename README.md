@@ -2,23 +2,30 @@
 
 # Panini Projection
 
-| Before                   | After                   |
-| ------------------------ | ----------------------- |
-| ![](./images/before.webp) | ![](./images/after.webp) |
-
 Panini/cylindrical camera projection post-process mod for World of Warcraft Classic 1.12.1 and WotLK 3.3.5a. A single DLL detects the client version at load time and selects the correct memory offsets, hook addresses, and CVar calling conventions. The shader pipeline, projection math, and visual output are identical on both versions. Configurable in-game through a Lua addon with settings dialog and minimap button.
 
 <details><summary>What?</summary>
 Perspective projection (what most vintage games use) looks warped on high resolution displays while using high FoV/field-of-view (think 100deg+). Panini projection is a method of warping the same image in a way that it appears "unwarped".
 </details>
 
+## Screenshots
+
+| Before | After |
+| --- | --- |
+| ![Durotar, settings dialog open, projection disabled](./images/00-before.webp) | ![Durotar, settings dialog open, projection enabled](./images/00-after.webp) |
+| ![Stormwind Trade District, standard perspective](./images/01-before.webp) | ![Stormwind Trade District, panini projection](./images/01-after.webp) |
+| ![Stormwind Park in rain, standard perspective](./images/02-before.webp) | ![Stormwind Park in rain, panini projection](./images/02-after.webp) |
+| ![Inn interior with chandelier, standard perspective](./images/03-before.webp) | ![Inn interior with chandelier, panini projection](./images/03-after.webp) |
+
 ## Features
+
+By default, applies a very small amount of correction to limit effect to a very mild visual enhancement.
 
 - Panini projection with configurable strength, vertical compensation, fill zoom, and FoV (0.001 to 3.133 rad)
 - FXAA 3.11 anti-aliasing (ps_3_0, single-pass, edge-detect with green-channel luma)
 - CAS contrast-adaptive sharpening (detail recovery after FXAA softening)
 - Settings dialog with sliders, checkboxes, and live preview; draggable minimap button
-- No external mod dependencies; standalone DLL + Lua addon
+- All config is account-wide
 
 ## Supported Clients
 
