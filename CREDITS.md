@@ -47,6 +47,8 @@ This project builds on the research, reverse engineering, open-source tooling, a
 
 **FrostAtom**: [awesome_wotlk](https://github.com/FrostAtom/awesome_wotlk). Collection of WoW 3.3.5a client research and offset tables. Reference for WotLK memory layout and function addresses.
 
+**fosley**: [WowFovChanger](https://github.com/fosley/WowFovChanger). FoV changer for WoW that documents the FoVRatio difference between Vanilla/TBC (41) and Wrath+ (50). Reference for understanding how the same raw radian value at camera+0x40 produces different perceived degrees across client versions.
+
 **wowdev.wiki contributors**: [wowdev.wiki](https://wowdev.wiki/). Community-maintained wiki documenting WoW client internals, file formats, rendering flags, and memory structures. Reference for CVar system behavior, camera structures, render pipeline, and D3D device layout.
 
 ## Runtime Dependencies & Tooling
@@ -74,6 +76,12 @@ This project builds on the research, reverse engineering, open-source tooling, a
 **Lars Melchior**: [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake). CMake's missing package manager, vendored for dependency fetching. Licensed MIT.
 
 **git-cliff contributors**: [git-cliff](https://git-cliff.org/). Changelog generator from conventional commits, used to produce release notes. Configuration in `cliff.toml`.
+
+## FrameXML Sources
+
+**Ketho**: [wow-ui-source-vanilla](https://github.com/Ketho/wow-ui-source-vanilla). Extracted WoW 1.12.1 FrameXML source. Reference for Classic addon API behavior, frame templates, and the `this`-as-self handler convention.
+
+**wowgaming**: [3.3.5-interface-files](https://github.com/wowgaming/3.3.5-interface-files). Extracted WoW 3.3.5a FrameXML source. Used to debug the WotLK slash command dispatch chain (`ChatEdit_ParseText`, `hash_SlashCmdList` lazy population, `string.gfind` trap function).
 
 ## UI & Addon References
 
