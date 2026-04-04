@@ -2,7 +2,7 @@
 
 # Panini Projection
 
-Panini/cylindrical camera projection post-process mod for World of Warcraft Classic 1.12.1 and WotLK 3.3.5a. A single DLL detects the client version at load time and selects the correct memory offsets, hook addresses, and CVar calling conventions. The shader pipeline, projection math, and visual output are identical on both versions. Configurable in-game through a Lua addon with settings dialog and minimap button.
+Panini/cylindrical camera projection post-process mod for World of Warcraft Classic (1.12.1) and Wrath of the Lich King (3.3.5a).
 
 <details><summary>What?</summary>
 Perspective projection (what most vintage games use) looks warped on high resolution displays while using high FoV/field-of-view (think 100deg+). Panini projection is a method of warping the same image in a way that it appears "unwarped".
