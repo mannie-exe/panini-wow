@@ -9,8 +9,17 @@
             "binaryDir": "${sourceDir}/build/${presetName}"
         },
         {
+            "name": "cross-mingw32",
+            "displayName": "Probe DLL (release)",
+            "inherits": "base",
+            "toolchainFile": "${sourceDir}/../cmake/toolchain-mingw32.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
             "name": "cross-mingw32-debug",
-            "displayName": "Probe DLL (cross-mingw32, diagnostic)",
+            "displayName": "Probe DLL (debug symbols)",
             "inherits": "base",
             "toolchainFile": "${sourceDir}/../cmake/toolchain-mingw32.cmake",
             "cacheVariables": {
@@ -19,6 +28,10 @@
         }
     ],
     "buildPresets": [
+        {
+            "name": "release",
+            "configurePreset": "cross-mingw32"
+        },
         {
             "name": "debug",
             "configurePreset": "cross-mingw32-debug"
