@@ -387,10 +387,19 @@ static HRESULT __stdcall ProbeEndScene(IDirect3DDevice9* dev) {
     if (g_probed)
         return g_originalEndScene(dev);
 
-    uintptr_t worldFrame = 0;
-    if (IsReadable((void*)g_offsets->WorldFrame_Ptr, sizeof(uintptr_t)))
-        worldFrame = *reinterpret_cast<uintptr_t*>(g_offsets->WorldFrame_Ptr);
-    if (!worldFrame)
+    // Match the main DLL's world-ready detection per version:
+    // Classic checks WorldFrame_Ptr != null; WotLK checks GetActiveCamera() != null.
+    bool worldReady = false;
+    if (g_offsets->version == WowVersion::WotLK335) {
+        if (IsReadable((void*)g_offsets->GetActiveCamera_Addr, 8)) {
+            auto getCam = reinterpret_cast<GetActiveCameraFn>(g_offsets->GetActiveCamera_Addr);
+            worldReady = getCam() != nullptr;
+        }
+    } else {
+        if (IsReadable((void*)g_offsets->WorldFrame_Ptr, sizeof(uintptr_t)))
+            worldReady = *reinterpret_cast<uintptr_t*>(g_offsets->WorldFrame_Ptr) != 0;
+    }
+    if (!worldReady)
         return g_originalEndScene(dev);
 
     g_probed = true;
@@ -399,7 +408,6 @@ static HRESULT __stdcall ProbeEndScene(IDirect3DDevice9* dev) {
     if (!g_logFile) g_logFile = fopen("Probe.log", "a");
 
     PROBE_LOG("=== Deferred Probes (world loaded) ===");
-    PROBE_LOG("WorldFrame: 0x%08X", worldFrame);
 
     ProbeCVars();
     ProbeCamera();

@@ -49,7 +49,9 @@ static float wotlk_getCVarFloat(const char* name, float fallback) {
     auto str = *reinterpret_cast<const char**>(
         reinterpret_cast<uint8_t*>(cv) + 0x28);
     if (!str || !str[0]) return fallback;
-    float v = static_cast<float>(atof(str));
+    char* end = nullptr;
+    float v = strtof(str, &end);
+    if (end == str) return fallback;
     return (v == v) ? v : fallback;
 }
 
@@ -61,7 +63,10 @@ static int wotlk_getCVarInt(const char* name, int fallback) {
     auto str = *reinterpret_cast<const char**>(
         reinterpret_cast<uint8_t*>(cv) + 0x28);
     if (!str || !str[0]) return fallback;
-    return atoi(str);
+    char* end = nullptr;
+    long v = strtol(str, &end, 10);
+    if (end == str) return fallback;
+    return static_cast<int>(v);
 }
 
 static void* wotlk_getCameraPtr() {

@@ -62,9 +62,9 @@ static constexpr WowOffsets kWotLK = {
     .Camera_FOV_Off     = 0x40,
     .CGxDeviceD3d_Ptr   = 0x00C5DF88,
     .D3DDevice_Off      = 0x397C,
-    // CGWorldFrame::RenderWorld — per-frame callback scheduled by OnFrameRender
-    // (vtable[32]). __cdecl, 1 stack arg (WorldFrame*). Not to be confused with
-    // 0x780F50 (a one-shot init function that fires once during loading).
+    // CGWorldFrame::RenderWorld at 0x4FAF90: per-frame __cdecl callback
+    // scheduled by OnFrameRender (vtable[32]), takes WorldFrame* as stack arg.
+    // 0x780F50 is an unrelated one-shot init function; do not hook it.
     .RenderWorld_Addr   = 0x004FAF90,
     .GetActiveCamera_Addr = 0x004F5960,
     .CVarGetString_Addr = 0x00767460,
