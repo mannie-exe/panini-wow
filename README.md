@@ -130,6 +130,25 @@ panini-wow/
 | `/panini status` | Show current settings |
 | `/panini cvars` | Show CVar readback from engine |
 
+## Troubleshooting
+
+### Log Files
+
+| Log | Path | Contents |
+|-----|------|----------|
+| DLL | `WoW/mods/PaniniWoW.log` | Init sequence, hook installation, CVar registration, resource creation. Debug builds add per-frame diagnostics. |
+| Probe | `WoW/mods/Probe.log` | Offset validation, D3D9 device state, camera pointers, CVar readback, loaded modules. |
+| WoW errors | `WoW/Errors/` | Crash dumps and stack traces from WoW's error handler. |
+| FrameXML | `WoW/Logs/FrameXML.log` | Lua errors during addon loading (when enabled in WoW client). |
+
+### Diagnostic DLL
+
+If PaniniWoW crashes at startup, build and load `Probe.dll` instead. It validates all memory offsets and reports D3D9 device state without hooking the render pipeline. Add `mods/Probe.dll` to `dlls.txt`, remove `mods/PaniniWoW.dll`, and check `mods/Probe.log` after launching.
+
+```bash
+mise run probe     # build probe DLL
+```
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow and code style guidelines.
