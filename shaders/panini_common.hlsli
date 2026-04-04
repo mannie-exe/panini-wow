@@ -34,4 +34,4 @@ float3 paniniInverse(float2 projXY, float D, float S) {
     return float3(dir, 1.0);
 }
 
-#endif // PANINI_COMMON_HLSLI
+#endif

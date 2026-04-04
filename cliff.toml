@@ -1,11 +1,11 @@
-# cliff.toml -- panini-classic-wow changelog configuration
+# cliff.toml -- panini-wow changelog configuration
 # https://git-cliff.org/docs/configuration
 
 [changelog]
 header = """
 # Changelog
 
-All notable changes to panini-classic-wow are documented in this file.\n
+All notable changes to panini-wow are documented in this file.\n
 """
 body = """
 {%- if version %}
@@ -61,7 +61,7 @@ filter_commits = false
 tag_pattern = "v[0-9].*"
 sort_commits = "oldest"
 link_parsers = [
-  { pattern = "#(\\d+)", href = "https://github.com/mannie-exe/panini-classic-wow/issues/${1}" },
+  { pattern = "#(\\d+)", href = "https://github.com/mannie-exe/panini-wow/issues/${1}" },
 ]
 
 [bump]

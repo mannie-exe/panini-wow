@@ -16,6 +16,8 @@ float  cas : register(c2);
 #define min4(x1,x2,x3,x4) min(min(x1,x2),min(x3,x4))
 #define max4(x1,x2,x3,x4) max(max(x1,x2),max(x3,x4))
 
+// Contrast adaptive sharpening. Skips when peak >= 0 (sharpness > ~0.87).
+// 3x3 kernel with 9-tap cross pattern; early-out via peak threshold.
 float4 main(float2 tex : TEXCOORD0) : COLOR {
     float peak = 3.0 * cas - 8.0;
     if (peak >= 0.0)

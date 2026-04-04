@@ -2,7 +2,7 @@
 #include <cmath>
 
 // Lua slider math validation (C++ equivalent).
-// From PaniniClassicWoW_Settings.lua:
+// From PaniniWoW_Settings.lua:
 //   STEP_DIVISOR = 200
 //   step = (maxVal - minVal) / STEP_DIVISOR
 //
@@ -22,7 +22,6 @@ static float snapToStep(float value, float minVal, float maxVal) {
     float step = sliderStep(minVal, maxVal);
     float normalized = (value - minVal) / step;
     float snapped = std::round(normalized) * step + minVal;
-    // Clamp to [min, max]
     if (snapped < minVal) return minVal;
     if (snapped > maxVal) return maxVal;
     return snapped;
@@ -90,7 +89,6 @@ TEST_F(SliderStepTest, SnapStrength_OffStep) {
 
 TEST_F(SliderStepTest, SnapFov_Default) {
     float snapped = snapToStep(2.6565f, 0.1f, 3.09f);
-    // Verify the user's default FOV value snaps cleanly
     float step = sliderStep(0.1f, 3.09f);
     float normalized = (2.6565f - 0.1f) / step;
     EXPECT_NEAR(std::round(normalized) * step + 0.1f, snapped, 0.00001f);

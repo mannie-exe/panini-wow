@@ -1,0 +1,9 @@
+## Interface: 30300
+## Title: Panini Projection
+## Notes: Panini projection post-process configuration.
+## Author: zer0cell
+## Version: 0.0.0-dev
+## SavedVariables: PaniniWoW_Config
+PaniniWoW.lua
+PaniniWoW_Settings.lua
+PaniniWoW_Minimap.lua

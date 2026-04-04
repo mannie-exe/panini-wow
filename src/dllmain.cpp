@@ -1,7 +1,33 @@
 #include "panini.h"
+#include "trampoline_pool.h"
 #include "version.g.h"
 
 HMODULE g_hModule = NULL;
+
+const WowOffsets* g_offsets = nullptr;
+
+bool DetectWowVersion() {
+    HMODULE hExe = GetModuleHandleA(NULL);
+    if (!hExe) {
+        g_offsets = &kClassic;
+        return true;
+    }
+
+    auto dos = reinterpret_cast<IMAGE_DOS_HEADER*>(hExe);
+    auto nt = reinterpret_cast<IMAGE_NT_HEADERS*>(
+        reinterpret_cast<uint8_t*>(hExe) + dos->e_lfanew);
+
+    DWORD timestamp = nt->FileHeader.TimeDateStamp;
+
+    // Classic 1.12.1 (2006): ~0x45000000, WotLK 3.3.5a (2010): ~0x4C200000.
+    // Threshold 0x48000000 (~March 2008) separates the two eras.
+    if (timestamp >= 0x48000000) {
+        g_offsets = &kWotLK;
+    } else {
+        g_offsets = &kClassic;
+    }
+    return true;
+}
 
 constexpr int VTABLE_ENDSCENE = 42;
 constexpr int VTABLE_RESET    = 16;
@@ -42,7 +68,20 @@ static bool InstallHooks() {
 
 static DWORD WINAPI InitThread(LPVOID) {
     LogInit();
-    LOG_INFO("init", "PaniniClassicWoW " PANINI_VERSION " initializing (SSE2 math)");
+    DetectWowVersion();
+    InitVersionOps();
+
+    LOG_INFO("init", "PaniniWoW " PANINI_VERSION " initializing (SSE2 math)");
+    LOG_INFO("init", "PE timestamp: 0x%08X, version: %s",
+        []() -> DWORD {
+            HMODULE h = GetModuleHandleA(NULL);
+            if (!h) return 0;
+            auto dos = reinterpret_cast<IMAGE_DOS_HEADER*>(h);
+            auto nt = reinterpret_cast<IMAGE_NT_HEADERS*>(
+                reinterpret_cast<uint8_t*>(h) + dos->e_lfanew);
+            return nt->FileHeader.TimeDateStamp;
+        }(),
+        g_offsets->version == WowVersion::WotLK335 ? "WotLK 3.3.5a" : "Classic 1.12.1");
 
     if (!InstallHooks()) {
         LOG_INFO("init", "D3D hook installation failed");
@@ -50,14 +89,23 @@ static DWORD WINAPI InitThread(LPVOID) {
     }
 
     CVar_RegisterAll();
+
+    if (!TrampolinePool_Init()) {
+        LOG_INFO("init", "trampoline pool allocation failed");
+        return 1;
+    }
+    LOG_INFO("init", "trampoline pool at %p", g_trampolinePool);
+
     InstallRenderWorldHook();
 
+    LOG_INFO("init", "hook strategy: RenderWorld trampoline + EndScene");
     LOG_INFO("init", "ready");
     return 0;
 }
 
 static void Cleanup() {
     LOG_INFO("init", "shutting down");
+    TrampolinePool_Shutdown();
     LogShutdown();
 }
 

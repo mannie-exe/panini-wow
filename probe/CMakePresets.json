@@ -1,0 +1,27 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}"
+        },
+        {
+            "name": "cross-mingw32-debug",
+            "displayName": "Probe DLL (cross-mingw32, diagnostic)",
+            "inherits": "base",
+            "toolchainFile": "${sourceDir}/../cmake/toolchain-mingw32.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "debug",
+            "configurePreset": "cross-mingw32-debug"
+        }
+    ]
+}

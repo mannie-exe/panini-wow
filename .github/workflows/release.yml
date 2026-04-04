@@ -38,21 +38,30 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           echo -n "$VERSION" > VERSION
-          sed -i "s/## Version: .*/## Version: $VERSION/" PaniniClassicWoW/PaniniClassicWoW.toc
+          sed -i "s/## Version: .*/## Version: $VERSION/" addon/PaniniWoW-Classic/PaniniWoW-Classic.toc
+          sed -i "s/## Version: .*/## Version: $VERSION/" addon/PaniniWoW-WotLK/PaniniWoW-WotLK.toc
 
       - run: mise run build:release
 
       - run: mise run test
 
-      - name: Package
+      - name: Package DLL
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          STAGING="PaniniClassicWoW-v${VERSION}"
-          mkdir -p "${STAGING}/mods"
-          mkdir -p "${STAGING}/Interface/AddOns/PaniniClassicWoW"
-          cp build/cross-mingw32/bin/PaniniClassicWoW.dll "${STAGING}/mods/"
-          cp PaniniClassicWoW/*.toc PaniniClassicWoW/*.lua "${STAGING}/Interface/AddOns/PaniniClassicWoW/"
-          zip -r "${STAGING}.zip" "${STAGING}"
+          cp build/cross-mingw32/bin/PaniniWoW.dll PaniniWoW.dll
+
+      - name: Package Classic addon
+        run: |
+          mkdir -p staging/PaniniWoW-Classic
+          cp addon/PaniniWoW-Classic/PaniniWoW-Classic.toc staging/PaniniWoW-Classic/
+          cp addon/shared/*.lua staging/PaniniWoW-Classic/
+          cd staging && zip -r ../PaniniWoW-Classic.zip PaniniWoW-Classic
+
+      - name: Package WotLK addon
+        run: |
+          mkdir -p staging/PaniniWoW-WotLK
+          cp addon/PaniniWoW-WotLK/PaniniWoW-WotLK.toc staging/PaniniWoW-WotLK/
+          cp addon/shared/*.lua staging/PaniniWoW-WotLK/
+          cd staging && zip -r ../PaniniWoW-WotLK.zip PaniniWoW-WotLK
 
       - uses: orhun/git-cliff-action@c93ef52f3d0ddcdcc9bd5447d98d458a11cd4f72 # v4
         id: cliff
@@ -63,5 +72,8 @@ jobs:
       - uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
         with:
           body: ${{ steps.cliff.outputs.content }}
-          files: PaniniClassicWoW-*.zip
+          files: |
+            PaniniWoW.dll
+            PaniniWoW-Classic.zip
+            PaniniWoW-WotLK.zip
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}

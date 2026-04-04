@@ -56,3 +56,10 @@ if (-not (Test-Path build/cross-mingw32-debug)) { cmake --preset cross-mingw32-d
 cmake --build build/cross-mingw32-debug --target shaders
 """
 
+[tasks.probe]
+description = "Build Probe.dll diagnostic (cross-mingw32)"
+run = """
+[ -d probe/build/cross-mingw32-debug ] || cmake --preset cross-mingw32-debug -S probe
+cmake --build probe/build/cross-mingw32-debug
+"""
+
