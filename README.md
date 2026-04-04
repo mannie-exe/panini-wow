@@ -19,7 +19,7 @@ Perspective projection (what most vintage games use) looks warped on high resolu
 
 ## Features
 
-By default, applies a very small amount of correction to limit effect to a very mild visual enhancement.
+Applies very little correction for a mild visual effect. Barely noticeable, corrective-only by default.
 
 - Panini projection with configurable strength, vertical compensation, fill zoom, and FoV (0.001 to 3.133 rad)
 - FXAA 3.11 anti-aliasing (ps_3_0, single-pass, edge-detect with green-channel luma)
@@ -56,7 +56,7 @@ Grab the latest release from [Releases](https://github.com/mannie-exe/panini-wow
 
 ### In-Game
 
-By default, the configured values should be fine for most 16:9 aspect ratio displays with
+The default values should be fine for most 16:9 aspect ratio displays with high FoV.
 
 Click the minimap button (sweet roll icon) or type `/panini` to open the settings dialog. Use `/panini help` for the full command list, but generally the in-game UI should be fine.
 
