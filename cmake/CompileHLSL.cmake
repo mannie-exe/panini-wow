@@ -37,8 +37,14 @@ add_custom_target(fxc2_tool DEPENDS "${FXC2_EXE}" "${FXC2_DLL_DEST}")
 if(CMAKE_HOST_WIN32)
     set(FXC2_COMMAND "${FXC2_EXE}")
 else()
-    find_program(WINE_EXECUTABLE NAMES wine wine64 REQUIRED)
-    set(FXC2_COMMAND "${WINE_EXECUTABLE}" "${FXC2_EXE}")
+    # Prefer wineloader over wine: CrossOver's wine binary requires the
+    # bottle system and ignores WINEPREFIX, but wineloader is the actual
+    # Wine runtime underneath and respects WINEPREFIX normally.
+    find_program(WINE_EXECUTABLE NAMES wineloader wine wine64 REQUIRED)
+    set(FXC2_COMMAND ${CMAKE_COMMAND} -E env
+        "WINEPREFIX=${CMAKE_SOURCE_DIR}/.wine"
+        "WINEDEBUG=-all"
+        "${WINE_EXECUTABLE}" "${FXC2_EXE}")
 endif()
 
 # compile_hlsl(SOURCE ... OUTPUT ... ENTRY ... PROFILE ... VARNAME ...)

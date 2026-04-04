@@ -41,9 +41,13 @@ This project builds on the research, reverse engineering, open-source tooling, a
 
 **marco**: libSiliconPatch. A compatibility patch library integrated into the TurtleSilicon performance stack for running 1.12.1 on Apple Silicon.
 
-**OwnedCore community**: [WoW Memory Editing forum](https://www.ownedcore.com/forums/world-of-warcraft/world-of-warcraft-bots-programs/wow-memory-editing/). Community knowledge base for WoW 1.12.1 memory structures, function addresses, and client internals. The [1.12.1.5875 Info Dump Thread](https://www.ownedcore.com/forums/world-of-warcraft/world-of-warcraft-bots-programs/wow-memory-editing/328263-wow-1-12-1-5875-info-dump-thread.html) is a key reference for the static addresses and vtable offsets used in this project's hooks.
+**OwnedCore community**: [WoW Memory Editing forum](https://www.ownedcore.com/forums/world-of-warcraft/world-of-warcraft-bots-programs/wow-memory-editing/). Community knowledge base for WoW memory structures, function addresses, and client internals. The [1.12.1.5875 Info Dump Thread](https://www.ownedcore.com/forums/world-of-warcraft/world-of-warcraft-bots-programs/wow-memory-editing/328263-wow-1-12-1-5875-info-dump-thread.html) and [3.3.5.12340 Offsets List](https://www.ownedcore.com/forums/world-of-warcraft/world-of-warcraft-bots-programs/wow-memory-editing/305416-3-3-5-12340-offsets-list.html) are key references for the static addresses and vtable offsets used in this project's hooks.
 
-**wowdev.wiki contributors**: [wowdev.wiki](https://wowdev.wiki/). Community-maintained wiki documenting WoW client internals, file formats, rendering flags, and memory structures. Reference for CVar system behavior, camera structures, and D3D device layout.
+**DrFrugal**: [CVarRegisterSpreadsheet](https://git.drfrugal.xyz/DrFrugal/CVarRegisterSpreadsheet). Detours-based CVar__Register hook for WoW 3.3.5a that logs all CVar registration calls with parameters. Confirmed the CVar__Register function signature (9 parameters) and address (0x00767FC0) used by this project's WotLK support.
+
+**FrostAtom**: [awesome_wotlk](https://github.com/FrostAtom/awesome_wotlk). Collection of WoW 3.3.5a client research and offset tables. Reference for WotLK memory layout and function addresses.
+
+**wowdev.wiki contributors**: [wowdev.wiki](https://wowdev.wiki/). Community-maintained wiki documenting WoW client internals, file formats, rendering flags, and memory structures. Reference for CVar system behavior, camera structures, render pipeline, and D3D device layout.
 
 ## Runtime Dependencies & Tooling
 
@@ -77,4 +81,6 @@ This project builds on the research, reverse engineering, open-source tooling, a
 
 **shagu**: [pfQuest](https://github.com/shagu/pfQuest). Quest helper and database addon for WoW Vanilla and TBC, powered by the VMaNGOS database. Reference for minimap button implementation and SavedVariables patterns.
 
-**TurtleWoW team and community**: [turtle-wow.org](https://turtle-wow.org/) | [turtlecraft.gg](https://turtlecraft.gg/). The Vanilla+ private server this project primarily targets. TurtleWoW's SuperWoW integration, custom CVar support, and modding-friendly `dlls.txt` loader make client mods like this one possible.
+**TurtleWoW team and community**: [turtle-wow.org](https://turtle-wow.org/) | [turtlecraft.gg](https://turtlecraft.gg/). Vanilla+ private server. TurtleWoW's SuperWoW integration, custom CVar support, and modding-friendly `dlls.txt` loader make client mods like this one possible.
+
+**ChromieCraft team**: [chromiecraft.com](https://www.chromiecraft.com/). WotLK 3.3.5a private server using stock client binaries. Test environment for WotLK support development.

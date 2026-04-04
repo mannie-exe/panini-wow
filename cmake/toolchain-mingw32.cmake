@@ -26,9 +26,16 @@ set(CMAKE_EXE_LINKER_FLAGS_INIT "-static-libgcc -static-libstdc++")
 set(CMAKE_SHARED_LINKER_FLAGS_INIT "-static-libgcc -static-libstdc++")
 
 # Wine runs cross-compiled executables (tests, discovery)
-find_program(WINE_EXECUTABLE NAMES wine wine64)
+# Prefer wineloader over wine: CrossOver's wine wrapper requires a
+# bottle and ignores WINEPREFIX; wineloader is the underlying runtime.
+find_program(WINE_EXECUTABLE NAMES wineloader wine wine64)
 if(WINE_EXECUTABLE)
-    set(CMAKE_CROSSCOMPILING_EMULATOR "${WINE_EXECUTABLE}" CACHE STRING "")
+    set(CMAKE_CROSSCOMPILING_EMULATOR
+        "${CMAKE_COMMAND}" -E env
+        "WINEPREFIX=${CMAKE_SOURCE_DIR}/.wine"
+        "WINEDEBUG=-all"
+        "${WINE_EXECUTABLE}"
+        CACHE STRING "")
 endif()
 
 # Search behavior: programs on host, libraries/headers in target sysroot

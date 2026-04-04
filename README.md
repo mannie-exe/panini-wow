@@ -1,8 +1,8 @@
-[![Build Status](https://img.shields.io/github/actions/workflow/status/mannie-exe/panini-classic-wow/ci.yml?branch=main&style=flat)](https://github.com/mannie-exe/panini-classic-wow/actions/workflows/ci.yml) [![Latest Release](https://img.shields.io/github/v/release/mannie-exe/panini-classic-wow?style=flat&include_prereleases)](https://github.com/mannie-exe/panini-classic-wow/releases/latest) [![License](https://img.shields.io/github/license/mannie-exe/panini-classic-wow?style=flat)](LICENSE)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/mannie-exe/panini-wow/ci.yml?branch=main&style=flat)](https://github.com/mannie-exe/panini-wow/actions/workflows/ci.yml) [![Latest Release](https://img.shields.io/github/v/release/mannie-exe/panini-wow?style=flat&include_prereleases)](https://github.com/mannie-exe/panini-wow/releases/latest) [![License](https://img.shields.io/github/license/mannie-exe/panini-wow?style=flat)](LICENSE)
 
 # Panini Projection
 
-Panini/cylindrical camera projection post-process mod for World of Warcraft 1.12.1 (TurtleWoW). Injects a D3D9 pixel shader pipeline after the world renders and before the UI draws, producing a wide field-of-view image with reduced peripheral distortion. Configurable in-game through a Lua addon with settings dialog and minimap button.
+Panini/cylindrical camera projection post-process mod for World of Warcraft Classic 1.12.1 and WotLK 3.3.5a. A single DLL detects the client version at load time and selects the correct memory offsets, hook addresses, and CVar calling conventions. The shader pipeline, projection math, and visual output are identical on both versions. Configurable in-game through a Lua addon with settings dialog and minimap button.
 
 ## Features
 
@@ -13,18 +13,29 @@ Panini/cylindrical camera projection post-process mod for World of Warcraft 1.12
 - Settings dialog with sliders, checkboxes, and live preview; draggable minimap button
 - No external mod dependencies; standalone DLL + Lua addon
 
+## Supported Clients
+
+| Client | Build | Test Server |
+|--------|-------|-------------|
+| Classic 1.12.1 | 5875 | TurtleWoW |
+| WotLK 3.3.5a | 12340 | ChromieCraft |
+
+Both clients run on macOS (Apple Silicon via Wine + DXVK) and Windows (native D3D9). The DLL distinguishes versions by PE header timestamp at load time; no compile-time configuration is needed.
+
 ## Getting Started
 
 ### Download
 
-Grab the latest release from [Releases](https://github.com/mannie-exe/panini-classic-wow/releases). Extract the zip into your TurtleWoW directory; both `mods/` and `Interface/AddOns/` paths resolve correctly.
+Grab the latest release from [Releases](https://github.com/mannie-exe/panini-wow/releases). Each release contains three artifacts: `PaniniWoW.dll` (single DLL for both versions), `PaniniWoW-Classic.zip` (addon for 1.12.1), and `PaniniWoW-WotLK.zip` (addon for 3.3.5a).
 
-### Manual Setup
+### Setup
 
-1. Copy `PaniniClassicWoW.dll` to `WoW/mods/`
-2. Add `mods/PaniniClassicWoW.dll` to `WoW/dlls.txt`
-3. Copy `PaniniClassicWoW/` to `WoW/Interface/AddOns/`
-4. Requires a `d3d9.dll` loader (DXVK or vanilla-tweaks)
+1. Copy `PaniniWoW.dll` to `WoW/mods/`
+2. Add `mods/PaniniWoW.dll` to `WoW/dlls.txt`
+3. Copy the matching addon package to `WoW/Interface/AddOns/`:
+   - Classic (1.12.1): `PaniniWoW-Classic/`
+   - WotLK (3.3.5a): `PaniniWoW-WotLK/`
+4. Requires a `d3d9.dll` loader (DXVK, TurtleSilicon, or vanilla-tweaks)
 5. `/reload` or restart WoW
 
 ### In-Game
@@ -54,6 +65,18 @@ flowchart LR
 
 The DLL hooks into WoW's render pipeline between world rendering and UI drawing. Three pixel shaders run in sequence on the rendered frame; the UI draws on top undistorted. All settings are configurable in-game through the addon's settings dialog or slash commands.
 
+### Version-Specific Internals
+
+The shader pipeline, projection math, and visual output are identical on both versions. The DLL's plumbing layer adapts to each client's engine:
+
+| Mechanism | Classic 1.12.1 | WotLK 3.3.5a |
+|-----------|---------------|--------------|
+| CVar system | `__fastcall` standalone functions | `__cdecl` wrappers (singleton loaded internally) |
+| CVar value read | Struct float at fixed offset | Struct string at +0x28, parsed via `atof` |
+| RenderWorld hook | `__thiscall` at 0x482D70, chains on SuperWoW | `__cdecl` callback at 0x4FAF90, standalone trampoline |
+| Camera access | Static pointer chain (WorldFrame +0x65B8) | `GetActiveCamera()` function call |
+| Trampoline pool | Static `.data` section array + `VirtualProtect` | Same |
+
 ## Building
 
 Requires MinGW-w64 cross-compiler (`i686-w64-mingw32-g++`), Wine (for shader compilation via vendored fxc2), and [mise](https://mise.jdx.dev/).
@@ -69,14 +92,21 @@ mise run test              # run GTest suite via Wine
 
 Five HLSL shaders (panini, fxaa, cas, tint, uv_vis) target ps_3_0 and are compiled at build time via a vendored `fxc2.exe` running under Wine. The resulting bytecode headers are embedded in the DLL.
 
+### Wine on macOS with CrossOver
+
+If the only Wine installation is CrossOver, the build uses `wineloader` (the underlying runtime) instead of the `wine` wrapper, which requires a CrossOver bottle. CMake sets `WINEPREFIX` to the project-local `.wine/` directory automatically.
+
 ## Project Structure
 
 ```
-panini-classic-wow/
+panini-wow/
   src/                      DLL source (hooks, CVars, state, logging)
-  include/                  Headers (panini.h, panini_math.h, log.h)
+  include/                  Headers (panini.h, panini_math.h, log.h, wow_offsets.h)
   shaders/                  HLSL pixel shaders (ps_3_0)
-  PaniniClassicWoW/         Lua addon (settings UI, minimap button)
+  addon/                    Lua addon packages
+    shared/                 Canonical Lua files
+    PaniniWoW-Classic/      Classic 1.12.1 (Interface 11200, symlinks to shared/)
+    PaniniWoW-WotLK/        WotLK 3.3.5a (Interface 30300, symlinks to shared/)
   cmake/                    Toolchain, shader compilation, version codegen
   tests/                    GTest unit tests (math, config, pipeline)
   tools/fxc2/               Vendored HLSL compiler (d3dcompiler_47.dll)
