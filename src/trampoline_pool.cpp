@@ -18,6 +18,11 @@ bool TrampolinePool_Init() {
 }
 
 void TrampolinePool_Shutdown() {
+    if (g_trampolinePool) {
+        DWORD oldProtect;
+        VirtualProtect(s_poolBacking, TRAMPOLINE_POOL_SIZE,
+                       PAGE_READONLY, &oldProtect);
+    }
     g_trampolinePool = nullptr;
     s_poolOffset = 0;
 }

@@ -63,9 +63,9 @@ local function CreateSlider(parent, name, labelText, lowText, highText, minVal, 
 	local textObj = getglobal(slider:GetName() .. "Text")
 	local lowObj = getglobal(slider:GetName() .. "Low")
 	local highObj = getglobal(slider:GetName() .. "High")
-	textObj:SetText(labelText)
-	lowObj:SetText(lowText)
-	highObj:SetText(highText)
+	if textObj then textObj:SetText(labelText) end
+	if lowObj then lowObj:SetText(lowText) end
+	if highObj then highObj:SetText(highText) end
 
 	local updatingFromEditBox = false
 	local eb = CreateFrame("EditBox", name .. "Input", parent)
@@ -137,7 +137,8 @@ end
 
 local function CreateCheckbox(parent, name, labelText, tooltipText, onClick)
 	local cb = CreateFrame("CheckButton", name, parent, "OptionsCheckButtonTemplate")
-	getglobal(cb:GetName() .. "Text"):SetText(labelText)
+	local cbText = getglobal(cb:GetName() .. "Text")
+	if cbText then cbText:SetText(labelText) end
 	cb.tooltipText = tooltipText or ""
 	cb:SetScript("OnClick", onClick)
 	return cb
