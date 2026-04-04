@@ -2,25 +2,32 @@
 
 # Panini Projection
 
+| Before                   | After                   |
+| ------------------------ | ----------------------- |
+| ![](./images/before.png) | ![](./images/after.png) |
+
 Panini/cylindrical camera projection post-process mod for World of Warcraft Classic 1.12.1 and WotLK 3.3.5a. A single DLL detects the client version at load time and selects the correct memory offsets, hook addresses, and CVar calling conventions. The shader pipeline, projection math, and visual output are identical on both versions. Configurable in-game through a Lua addon with settings dialog and minimap button.
+
+<details><summary>What?</summary>
+Perspective projection (what most vintage games use) looks warped on high resolution displays while using high FoV/field-of-view (think 100deg+). Panini projection is a method of warping the same image in a way that it appears "unwarped".
+</details>
 
 ## Features
 
 - Panini projection with configurable strength, vertical compensation, fill zoom, and FoV (0.001 to 3.133 rad)
 - FXAA 3.11 anti-aliasing (ps_3_0, single-pass, edge-detect with green-channel luma)
 - CAS contrast-adaptive sharpening (detail recovery after FXAA softening)
-- `tex2Dgrad` screen-space derivatives for correct texture filtering through the projection warp
 - Settings dialog with sliders, checkboxes, and live preview; draggable minimap button
 - No external mod dependencies; standalone DLL + Lua addon
 
 ## Supported Clients
 
-| Client | Build | Test Server |
-|--------|-------|-------------|
-| Classic 1.12.1 | 5875 | TurtleWoW |
-| WotLK 3.3.5a | 12340 | ChromieCraft |
+| Client         | Build |
+| -------------- | ----- |
+| Classic 1.12.1 | 5875  |
+| WotLK 3.3.5a   | 12340 |
 
-Both clients run on macOS (Apple Silicon via Wine + DXVK) and Windows (native D3D9). The DLL distinguishes versions by PE header timestamp at load time; no compile-time configuration is needed.
+Both clients tested on macOS (Apple Silicon via Wine + DXVK). The DLL distinguishes versions by PE header timestamp at load time.
 
 ## Getting Started
 
@@ -30,17 +37,21 @@ Grab the latest release from [Releases](https://github.com/mannie-exe/panini-wow
 
 ### Setup
 
+0. Find your WoW installation, we'll refer to it as `WoW/`
 1. Copy `PaniniWoW.dll` to `WoW/mods/`
 2. Add `mods/PaniniWoW.dll` to `WoW/dlls.txt`
 3. Copy the matching addon package to `WoW/Interface/AddOns/`:
-   - Classic (1.12.1): `PaniniWoW-Classic/`
-   - WotLK (3.3.5a): `PaniniWoW-WotLK/`
+    - Classic (1.12.1): `PaniniWoW-Classic/`
+    - WotLK (3.3.5a): `PaniniWoW-WotLK/`
+    - Leave it as ZIP **or** extract to folder of _SAME NAME_
 4. Requires a `d3d9.dll` loader (DXVK, TurtleSilicon, or vanilla-tweaks)
 5. `/reload` or restart WoW
 
 ### In-Game
 
-Click the minimap button (sweet roll icon) or type `/panini` to open the settings dialog. Use `/panini help` for the full command list.
+By default, the configured values should be fine for most 16:9 aspect ratio displays with
+
+Click the minimap button (sweet roll icon) or type `/panini` to open the settings dialog. Use `/panini help` for the full command list, but generally the in-game UI should be fine.
 
 ## How It Works
 
@@ -69,13 +80,13 @@ The DLL hooks into WoW's render pipeline between world rendering and UI drawing.
 
 The shader pipeline, projection math, and visual output are identical on both versions. The DLL's plumbing layer adapts to each client's engine:
 
-| Mechanism | Classic 1.12.1 | WotLK 3.3.5a |
-|-----------|---------------|--------------|
-| CVar system | `__fastcall` standalone functions | `__cdecl` wrappers (singleton loaded internally) |
-| CVar value read | Struct float at fixed offset | Struct string at +0x28, parsed via `atof` |
-| RenderWorld hook | `__thiscall` at 0x482D70, chains on SuperWoW | `__cdecl` callback at 0x4FAF90, standalone trampoline |
-| Camera access | Static pointer chain (WorldFrame +0x65B8) | `GetActiveCamera()` function call |
-| Trampoline pool | Static `.data` section array + `VirtualProtect` | Same |
+| Mechanism        | Classic 1.12.1                                  | WotLK 3.3.5a                                          |
+| ---------------- | ----------------------------------------------- | ----------------------------------------------------- |
+| CVar system      | `__fastcall` standalone functions               | `__cdecl` wrappers (singleton loaded internally)      |
+| CVar value read  | Struct float at fixed offset                    | Struct string at +0x28, parsed via `atof`             |
+| RenderWorld hook | `__thiscall` at 0x482D70, chains on SuperWoW    | `__cdecl` callback at 0x4FAF90, standalone trampoline |
+| Camera access    | Static pointer chain (WorldFrame +0x65B8)       | `GetActiveCamera()` function call                     |
+| Trampoline pool  | Static `.data` section array + `VirtualProtect` | Same                                                  |
 
 ## Building
 
@@ -114,32 +125,32 @@ panini-wow/
 
 ## Commands
 
-| Command | Purpose |
-|---------|---------|
-| `/panini` | Open settings dialog |
-| `/panini toggle` | Toggle panini on/off |
-| `/panini on\|off` | Enable/disable panini |
-| `/panini fov N` | Set FoV (0.001 to 3.133 rad) |
-| `/panini strength N` | Set projection strength (0 to 0.1) |
-| `/panini vertical N` | Set vertical compensation (-1 to 1) |
-| `/panini fill N` | Set fill zoom (0 to 1) |
-| `/panini fxaa on\|off` | Toggle FXAA |
-| `/panini sharpen N` | Set CAS sharpness (0 to 1) |
-| `/panini reset` | Reset settings to defaults |
-| `/panini reset ui` | Reset dialog position to center |
-| `/panini status` | Show current settings |
-| `/panini cvars` | Show CVar readback from engine |
+| Command                | Purpose                             |
+| ---------------------- | ----------------------------------- |
+| `/panini`              | Open settings dialog                |
+| `/panini toggle`       | Toggle panini on/off                |
+| `/panini on\|off`      | Enable/disable panini               |
+| `/panini fov N`        | Set FoV (0.001 to 3.133 rad)        |
+| `/panini strength N`   | Set projection strength (0 to 0.1)  |
+| `/panini vertical N`   | Set vertical compensation (-1 to 1) |
+| `/panini fill N`       | Set fill zoom (0 to 1)              |
+| `/panini fxaa on\|off` | Toggle FXAA                         |
+| `/panini sharpen N`    | Set CAS sharpness (0 to 1)          |
+| `/panini reset`        | Reset settings to defaults          |
+| `/panini reset ui`     | Reset dialog position to center     |
+| `/panini status`       | Show current settings               |
+| `/panini cvars`        | Show CVar readback from engine      |
 
 ## Troubleshooting
 
 ### Log Files
 
-| Log | Path | Contents |
-|-----|------|----------|
-| DLL | `WoW/mods/PaniniWoW.log` | Init sequence, hook installation, CVar registration, resource creation. Debug builds add per-frame diagnostics. |
-| Probe | `WoW/mods/Probe.log` | Offset validation, D3D9 device state, camera pointers, CVar readback, loaded modules. |
-| WoW errors | `WoW/Errors/` | Crash dumps and stack traces from WoW's error handler. |
-| FrameXML | `WoW/Logs/FrameXML.log` | Lua errors during addon loading (when enabled in WoW client). |
+| Log        | Path                     | Contents                                                                                                        |
+| ---------- | ------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| DLL        | `WoW/mods/PaniniWoW.log` | Init sequence, hook installation, CVar registration, resource creation. Debug builds add per-frame diagnostics. |
+| Probe      | `WoW/mods/Probe.log`     | Offset validation, D3D9 device state, camera pointers, CVar readback, loaded modules.                           |
+| WoW errors | `WoW/Errors/`            | Crash dumps and stack traces from WoW's error handler.                                                          |
+| FrameXML   | `WoW/Logs/FrameXML.log`  | Lua errors during addon loading (when enabled in WoW client).                                                   |
 
 ### Diagnostic DLL
 
