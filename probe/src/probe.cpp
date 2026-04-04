@@ -458,8 +458,12 @@ static DWORD WINAPI InitThread(LPVOID) {
 
     PROBE_LOG("=== Initial probes complete (deferred probes run when world loads) ===");
 
-    fclose(g_logFile);
-    g_logFile = nullptr;
+    // ProbeEndScene may have already closed g_logFile on the render thread
+    // if the world was loaded when the probe was injected.
+    if (g_logFile) {
+        fclose(g_logFile);
+        g_logFile = nullptr;
+    }
     return 0;
 }
 
