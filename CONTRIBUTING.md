@@ -9,8 +9,8 @@
 ## Getting Started
 
 ```bash
-git clone https://github.com/mannie-exe/panini-classic-wow.git
-cd panini-classic-wow
+git clone https://github.com/mannie-exe/panini-wow.git
+cd panini-wow
 mise install
 mise run build
 mise run test
@@ -34,7 +34,7 @@ Tests are cross-compiled GTest binaries, run directly via Wine:
 mise run test
 ```
 
-146 tests cover panini math, projection invariants, config validation, shader pipeline selection, slider precision, and runtime robustness.
+151 tests cover panini math, projection invariants, config validation, shader pipeline selection, slider precision, CVar table integrity, and runtime robustness.
 
 ## Development Workflow
 
@@ -58,20 +58,25 @@ All shaders target ps_3_0 (D3D9 Shader Model 3.0). The compiler is a vendored `f
 
 ### CVar Changes
 
-When adding or removing CVars, update both sides of the contract:
+When adding or removing CVars, update all three layers:
 
-- **DLL:** `src/cvar.cpp` (registration + `PostProcessConfig_ReadFromCVars`)
-- **Addon:** `PaniniClassicWoW/PaniniClassicWoW.lua` (`defaults` table + `cvarMap` table)
-- **Tests:** `tests/unit/ConfigValidationTest.cc` (validation range tests)
+- **DLL:** `src/cvar.cpp` (registration + `PostProcessConfig_ReadFromCVars`), `include/cvar_core.h` (enum + table)
+- **Addon:** `addon/shared/PaniniWoW.lua` (`defaults` table + `cvarMap` table)
+- **Tests:** `tests/unit/CVarTableTest.cc` and `tests/unit/ConfigValidationTest.cc`
+
+The DLL registers CVars at the engine level on both clients. The addon does not call `RegisterCVar` (it does not exist on WotLK 3.3.5a). On Classic 1.12.1, CVar values are read as struct floats at fixed offsets. On WotLK 3.3.5a, values are read as strings at CVar struct offset +0x28 and parsed via `atof`/`atoi`.
 
 ## Project Structure
 
 ```
-panini-classic-wow/
+panini-wow/
   src/                      DLL source (hooks, CVars, state, logging)
   include/                  Headers (panini.h, panini_math.h, log.h)
   shaders/                  HLSL pixel shaders (ps_3_0)
-  PaniniClassicWoW/         Lua addon (settings UI, minimap button)
+  addon/                    Lua addon packages
+    shared/                 Canonical Lua files
+    PaniniWoW-Classic/      Classic 1.12.1 (Interface 11200, symlinks to shared/)
+    PaniniWoW-WotLK/        WotLK 3.3.5a (Interface 30300, symlinks to shared/)
   cmake/                    Toolchain, shader compilation, version codegen
   tests/                    GTest unit tests (math, config, pipeline)
   tools/fxc2/               Vendored HLSL compiler (d3dcompiler_47.dll)
@@ -146,6 +151,20 @@ Write doc comments with future doc-gen tooling in mind: structured, factual, no 
 - `SetSize()` does not exist; use `SetWidth()` + `SetHeight()`
 - `string.gfind` (not `string.gmatch`, which is Lua 5.1+)
 - `GetAddOnMetadata(name, field)` (no `C_AddOns` namespace)
+
+### WoW 3.3.5a Lua
+
+- `this`, `event`, `arg1` globals still work (deprecated but set by the engine for backward compatibility)
+- `hooksecurefunc` exists; use it for secure functions like `ToggleGameMenu` instead of monkey-patching
+- `RegisterCVar` does not exist; the DLL registers CVars at the C++ engine level
+- `getglobal()` is deprecated but functional (aliased to `_G[name]`)
+- `InterfaceOptions_AddCategory` exists (added in 2.x); guard with `if InterfaceOptions_AddCategory then`
+- `string.gmatch` (not `string.gfind`); use `string.gfind or string.gmatch` shim for dual compat
+- After registering slash commands, call `ChatFrame_ImportAllListsToHash()` to ensure the command hash table includes new entries; guard with an existence check for Classic
+
+### Wine on macOS
+
+If the only Wine binary on PATH is CrossOver, shader compilation and test execution fail because CrossOver's `wine` wrapper requires a bottle and ignores `WINEPREFIX`. The CMake toolchain and shader module prefer `wineloader` (the underlying runtime) and set `WINEPREFIX` to the project-local `.wine/` directory via `cmake -E env`.
 
 ## Documentation
 
