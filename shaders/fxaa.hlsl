@@ -13,6 +13,8 @@ float4 rcpFrame  : register(c0);
 #define EDGE_THRESHOLD_MIN 0.0833 // 1/12
 #define SUBPIX_QUALITY     0.75
 
+// Single-pass FXAA 3.11 (quality preset 12, 5 search steps).
+// Luma is sampled from green channel (.g) to avoid extra weight calculations.
 float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float2 invPx = rcpFrame.xy;
 
@@ -45,15 +47,13 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
 
     float edgeH = abs(lumaNWSW - 2.0 * lumaW) + abs(lumaNS - 2.0 * lumaC) * 2.0 + abs(lumaNESE - 2.0 * lumaE);
     float edgeV = abs(lumaNWNE - 2.0 * lumaN) + abs(lumaEW - 2.0 * lumaC) * 2.0 + abs(lumaSWSE - 2.0 * lumaS);
-    float isHorz = step(edgeV, edgeH); // 1.0 if horizontal, 0.0 if vertical
+    float isHorz = step(edgeV, edgeH);
 
-    // Sub-pixel aliasing factor
     float subpixA = (2.0 * (lumaNS + lumaEW) + lumaNWSW + lumaNESE) * (1.0 / 12.0);
     float subpixB = saturate(abs(subpixA - lumaC) / lumaRange);
     float subpixC = (-2.0 * subpixB + 3.0) * subpixB * subpixB;
     float subpixFinal = subpixC * subpixC * SUBPIX_QUALITY;
 
-    // Step direction perpendicular to edge
     float stepLen = lerp(invPx.x, invPx.y, isHorz);
     float lumaP = lerp(lumaE, lumaN, isHorz);
     float lumaN2 = lerp(lumaW, lumaS, isHorz);
@@ -61,15 +61,13 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float gradP = abs(lumaP - lumaC);
     float gradN = abs(lumaN2 - lumaC);
 
-    // Pick the side with steeper gradient
-    float pickNeg = step(gradP, gradN); // 1.0 if negative side is steeper
+    float pickNeg = step(gradP, gradN);
     stepLen = lerp(stepLen, -stepLen, pickNeg);
     float lumaEdgeSide = lerp(lumaP, lumaN2, pickNeg);
 
     float2 edgeUV = uv;
     edgeUV += lerp(float2(stepLen * 0.5, 0), float2(0, stepLen * 0.5), isHorz);
 
-    // Search direction along the edge
     float2 edgeStep = lerp(float2(0, invPx.y), float2(invPx.x, 0), isHorz);
 
     float edgeLuma = (lumaC + lumaEdgeSide) * 0.5;
@@ -116,7 +114,6 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     uvN -= edgeStep * 12.0 * (1.0 - doneN);
     lumaEndN = lerp(tex2D(inputTex, uvN).g - edgeLuma, lumaEndN, doneN);
 
-    // Distance to endpoints
     float distP = lerp(uvP.y - uv.y, uvP.x - uv.x, isHorz);
     float distN = lerp(uv.y - uvN.y, uv.x - uvN.x, isHorz);
 
@@ -124,14 +121,13 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
     float edgeLength = distP + distN;
     float pixelOffset = -distClosest / edgeLength + 0.5;
 
-    // Select endpoint luma for the closer side
-    float closerP = step(distN, distP); // 1.0 if negative is closer
+    float closerP = step(distN, distP);
     float lumaEndClosest = lerp(lumaEndP, lumaEndN, closerP);
 
     // Reject if gradient at endpoint is in wrong direction
-    float centerSign = step(0.0, lumaC - edgeLuma); // 1.0 if center > edge
-    float endSign = step(0.0, lumaEndClosest);       // 1.0 if end > 0
-    float sameSign = step(0.5, abs(centerSign - endSign)); // 1.0 if different signs
+    float centerSign = step(0.0, lumaC - edgeLuma);
+    float endSign = step(0.0, lumaEndClosest);
+    float sameSign = step(0.5, abs(centerSign - endSign));
     float finalOffset = pixelOffset * sameSign;
 
     finalOffset = max(finalOffset, subpixFinal);

@@ -3,10 +3,6 @@
 #include <limits>
 #include "panini_math.h"
 
-// Config parameter bounds validation.
-// These test the documented valid ranges for each config parameter.
-// The Lua addon enforces these ranges; the DLL relies on them.
-
 class ConfigValidationTest : public ::testing::Test {};
 
 // Strength: valid [0, 1], Lua enforces [0, 0.10] via slider
@@ -35,15 +31,9 @@ TEST_F(ConfigValidationTest, Strength_AboveMaxSlider_ClampedByCompute) {
     EXPECT_GT(zoom, 0.0f);
 }
 
-// Vertical Comp: valid [-1, 1]
-// ComputeFillZoom does not use vertical comp; that's a shader parameter.
-// But we validate the bounds here to document the contract.
+// Vertical Comp: valid [-1, 1], passes through to the shader unmodified by ComputeFillZoom.
 
 TEST_F(ConfigValidationTest, VerticalComp_NotUsedByComputeFillZoom) {
-    // ComputeFillZoom does not take a verticalComp parameter.
-    // The verticalComp value passes through to the shader as-is.
-    // This test documents that contract: changing verticalComp does not
-    // affect the zoom calculation (it only affects the shader's projection).
     float zoom = ComputeFillZoom(0.03f, 1.0f, 1.7778f, 1.0f);
     EXPECT_FALSE(std::isnan(zoom));
     EXPECT_GT(zoom, 1.0f);

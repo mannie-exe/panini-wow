@@ -3,7 +3,7 @@
 ## Notes: Panini projection post-process configuration.
 ## Author: zer0cell
 ## Version: 0.0.0-dev
-## SavedVariables: PaniniClassicWoW_Config
-PaniniClassicWoW.lua
-PaniniClassicWoW_Settings.lua
-PaniniClassicWoW_Minimap.lua
+## SavedVariables: PaniniWoW_Config
+PaniniWoW.lua
+PaniniWoW_Settings.lua
+PaniniWoW_Minimap.lua

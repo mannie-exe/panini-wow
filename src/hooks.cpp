@@ -4,6 +4,7 @@
 #include "cas_shader.h"
 #include "uv_vis_shader.h"
 #include "fxaa_shader.h"
+#include "trampoline_pool.h"
 #include <cmath>
 
 EndScene_t    g_pOriginalEndScene    = nullptr;
@@ -158,7 +159,7 @@ static void ApplyPostProcess(IDirect3DDevice9* dev) {
     {
         static int s_diag = 0;
         if (s_diag++ < 1) {
-            float swFov = CVar_GetFloat("FoV", 0.0f);
+            float swFov = CVar_GetFloat(CVar::WowFov, 0.0f);
             LOG_DEBUG("diag", "swFov=%08X fov=%08X htan=%08X zoom=%08X D=%08X fill=%08X asp=%08X",
                 FloatBits(swFov), FloatBits(fov), FloatBits(halfTan),
                 FloatBits(zoom), FloatBits(cfg.strength), FloatBits(cfg.fill),
@@ -236,7 +237,6 @@ static void ApplyPostProcess(IDirect3DDevice9* dev) {
         float sh = cfg.sharpen;
         if (sh > 1.0f) sh = 1.0f;
 
-        // FXAA pass: paniniOutput -> sceneTexture (input) -> paniniOutput (output)
         dev->StretchRect(g_pPaniniOutputSurface, NULL, g_pSceneSurface, NULL, D3DTEXF_POINT);
         dev->SetRenderTarget(0, g_pPaniniOutputSurface);
         dev->SetTexture(0, g_pSceneTexture);
@@ -244,7 +244,6 @@ static void ApplyPostProcess(IDirect3DDevice9* dev) {
         dev->SetPixelShaderConstantF(0, fxaaC0, 1);
         dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(ScreenVertex));
 
-        // CAS pass: paniniOutput (FXAA result) -> sceneTexture (input) -> backbuffer
         dev->StretchRect(g_pPaniniOutputSurface, NULL, g_pSceneSurface, NULL, D3DTEXF_POINT);
 
         float casC1[4] = { invW, invH, 0.0f, 0.0f };
@@ -287,24 +286,24 @@ static void ApplyPostProcess(IDirect3DDevice9* dev) {
 
 static uintptr_t g_originalRenderWorldTarget = 0;
 
-// Called via JMP from 0x00482D70. ECX = WorldFrame* (__thiscall).
-// The function prologue (push ebp; mov ebp,esp; ...) does NOT clobber ECX,
-// so reading ECX in the first statement captures the caller's value.
-void Hooked_RenderWorld() {
+// Classic 0x482D70: __thiscall, ECX = WorldFrame* on entry, no stack args.
+// WotLK 0x4FAF90: __cdecl, WorldFrame* is first stack arg.
+// Declared with a parameter so the compiler reads the stack arg correctly
+// regardless of frame pointer omission (-fomit-frame-pointer in -O2).
+// On Classic, the parameter slot holds whatever was on the stack (ignored).
+void __cdecl Hooked_RenderWorld(void* stackArg) {
     void* thisPtr;
-    __asm__ __volatile__("" : "=c"(thisPtr));
+    if (g_offsets->version == WowVersion::WotLK335) {
+        thisPtr = stackArg;
+    } else {
+        __asm__ __volatile__("" : "=c"(thisPtr));
+    }
 
     UpdateCameraFov();
 
-    __asm__ __volatile__ (
-        "mov %0, %%ecx\n\t"
-        "call *%1\n\t"
-        :
-        : "r"(thisPtr), "r"(g_originalRenderWorldTarget)
-        : "eax", "edx", "ecx", "memory"
-    );
+    g_ops.callOriginalRenderWorld(g_originalRenderWorldTarget, thisPtr);
 
-    if (!g_resourcesReady || !IsWorldActive())
+    if (!g_resourcesReady || !g_ops.isWorldActive())
         return;
 
     IDirect3DDevice9* dev = GetWoWDevice();
@@ -315,7 +314,7 @@ void Hooked_RenderWorld() {
 
 HRESULT __stdcall Hooked_EndScene(IDirect3DDevice9* dev) {
     if (!g_resourcesReady) {
-        if (IsWorldActive() && CreateResources(dev)) {
+        if (g_ops.isWorldActive() && CreateResources(dev)) {
             LOG_INFO("hook", "EndScene: resources created after world active");
         }
     }
@@ -328,7 +327,7 @@ HRESULT __stdcall Hooked_EndScene(IDirect3DDevice9* dev) {
         pBB->Release();
         if (bbDesc.Width != g_bbW || bbDesc.Height != g_bbH) {
             ReleaseResources();
-            if (IsWorldActive()) CreateResources(dev);
+            if (g_ops.isWorldActive()) CreateResources(dev);
         }
     }
 
@@ -341,17 +340,15 @@ HRESULT __stdcall Hooked_Reset(IDirect3DDevice9* dev, D3DPRESENT_PARAMETERS* pPa
     return g_pOriginalReset(dev, pParams);
 }
 
-// 9-byte trampoline: saves the original prologue bytes and jumps back.
-// Original bytes at 0x00482D70:
-//   55           push ebp
-//   8B EC        mov ebp, esp
-//   81 EC 80000000  sub esp, 0x80
-// First clean instruction boundary at or after byte 5 is byte 9.
+// Trampoline: saves the original prologue bytes and jumps back.
+// Classic (0x00482D70): push ebp(1) + mov ebp,esp(2) + sub esp,0x80(6) = 9 bytes
+// WotLK (0x004FAF90): push ebp(1) + mov ebp,esp(2) + sub esp,0x80(6) = 9 bytes
 static uint8_t* g_trampoline = nullptr;
 
 void InstallRenderWorldHook() {
-    auto target = reinterpret_cast<uint8_t*>(wow::RenderWorld_Addr);
-    constexpr int PATCH_SIZE = 9;
+    auto target = reinterpret_cast<uint8_t*>(g_offsets->RenderWorld_Addr);
+
+    int patchSize = g_ops.renderWorldPatchSize;
 
     // If another mod already hooked (0xE9 = JMP), chain on top instead
     if (target[0] == 0xE9) {
@@ -372,39 +369,34 @@ void InstallRenderWorldHook() {
         return;
     }
 
-    // No existing hook: install our own 9-byte trampoline.
-    // Trampoline: execute saved 9 bytes, then JMP to target+9.
-    // NULL base is safe: 32-bit process, all addresses within JMP rel32 range.
-    g_trampoline = reinterpret_cast<uint8_t*>(
-        VirtualAlloc(NULL, 32, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE));
-    if (!g_trampoline) {
-        LOG_INFO("hook", "RenderWorld: VirtualAlloc for trampoline failed");
+    int trampOffset = TrampolineAlloc(32);
+    if (trampOffset < 0) {
+        LOG_INFO("hook", "RenderWorld: trampoline pool exhausted");
         return;
     }
+    g_trampoline = &g_trampolinePool[trampOffset];
 
-    memcpy(g_trampoline, target, PATCH_SIZE);
+    memcpy(g_trampoline, target, patchSize);
 
-    // JMP to target + PATCH_SIZE (continue original function after our patch)
-    g_trampoline[PATCH_SIZE] = 0xE9;
+    g_trampoline[patchSize] = 0xE9;
     int32_t trampolineDisp = static_cast<int32_t>(
-        reinterpret_cast<intptr_t>(target + PATCH_SIZE) -
-        reinterpret_cast<intptr_t>(g_trampoline + PATCH_SIZE + 5));
-    memcpy(g_trampoline + PATCH_SIZE + 1, &trampolineDisp, 4);
+        reinterpret_cast<intptr_t>(target + patchSize) -
+        reinterpret_cast<intptr_t>(g_trampoline + patchSize + 5));
+    memcpy(g_trampoline + patchSize + 1, &trampolineDisp, 4);
 
     g_originalRenderWorldTarget = reinterpret_cast<uintptr_t>(g_trampoline);
 
-    // Patch original function: JMP to Hooked_RenderWorld + NOP padding
     DWORD oldProt;
-    VirtualProtect(target, PATCH_SIZE, PAGE_EXECUTE_READWRITE, &oldProt);
+    VirtualProtect(target, patchSize, PAGE_EXECUTE_READWRITE, &oldProt);
 
     target[0] = 0xE9;
     int32_t hookDisp = static_cast<int32_t>(
         reinterpret_cast<intptr_t>(&Hooked_RenderWorld) - reinterpret_cast<intptr_t>(target + 5));
     memcpy(target + 1, &hookDisp, 4);
-    memset(target + 5, 0x90, PATCH_SIZE - 5);
+    memset(target + 5, 0x90, patchSize - 5);
 
-    VirtualProtect(target, PATCH_SIZE, oldProt, &oldProt);
+    VirtualProtect(target, patchSize, oldProt, &oldProt);
 
-    LOG_INFO("hook", "RenderWorld: trampoline at %p, hook at %p",
-            g_trampoline, &Hooked_RenderWorld);
+    LOG_INFO("hook", "RenderWorld: trampoline at %p patchSize=%d hook at %p",
+            g_trampoline, patchSize, &Hooked_RenderWorld);
 }

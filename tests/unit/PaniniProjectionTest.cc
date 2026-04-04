@@ -28,14 +28,11 @@ static Vec3 paniniInverse(float projX, float projY, float D, float S) {
     return {dirX, dirY, 1.0f};
 }
 
-// Forward panini projection: ray direction -> projected XY.
-// This is the analytical inverse of paniniInverse for D=0 (identity).
-// For general D, we validate round-trip via UV mapping.
+// For general D, round-trip is validated via UV mapping (no closed-form inverse).
 
 struct Vec2 { float x, y; };
 
-// Convert a ray direction to screen UV using the shader's sampling logic.
-// This mirrors: srcUV = (ray.xy / ray.z) / maxRectXY * 0.5 + 0.5
+// Mirrors shader sampling: srcUV = (ray.xy / ray.z) / maxRectXY * 0.5 + 0.5
 static Vec2 rayToScreenUV(Vec3 ray, float halfTanFov, float aspect, float zoom) {
     Vec2 maxRectXY = {halfTanFov * aspect, halfTanFov};
     float zClamped = std::max(ray.z, 0.0001f);
@@ -45,7 +42,7 @@ static Vec2 rayToScreenUV(Vec3 ray, float halfTanFov, float aspect, float zoom) 
     };
 }
 
-// Convert screen UV to projected XY (shader main function inverse mapping).
+// Inverse of the shader's main function UV mapping.
 static Vec2 screenUVToProjXY(float u, float v, float halfTanFov, float aspect, float zoom) {
     Vec2 maxRectXY = {halfTanFov * aspect, halfTanFov};
     float zoomClamped = std::max(zoom, 0.001f);
@@ -54,7 +51,6 @@ static Vec2 screenUVToProjXY(float u, float v, float halfTanFov, float aspect, f
     return {sx * maxRectXY.x, sy * maxRectXY.y};
 }
 
-// Normalize a vec3
 static Vec3 normalize3(Vec3 v) {
     float len = sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
     if (len < 0.0001f) return {0, 0, 1};
@@ -93,7 +89,6 @@ TEST_F(PaniniProjectionTest, CenterRay_PointsForward) {
 }
 
 TEST_F(PaniniProjectionTest, HorizontalSymmetry) {
-    // Projecting +X and -X should produce symmetric rays.
     float D = 0.5f;
     Vec3 rayPos = paniniInverse(1.0f, 0.0f, D, 0.0f);
     Vec3 rayNeg = paniniInverse(-1.0f, 0.0f, D, 0.0f);
@@ -174,7 +169,6 @@ TEST_F(PaniniProjectionTest, RoundTrip_CenterPixel) {
 }
 
 TEST_F(PaniniProjectionTest, RoundTrip_SlightOffset) {
-    // UV 0.45 is a small offset from center -- stays within projection domain.
     float D = 0.5f, S = 0.0f;
     Vec2 proj = screenUVToProjXY(0.45f, 0.5f, kHalfTanFov, kAspect, kZoom);
     Vec3 ray = paniniInverse(proj.x, proj.y, D, S);

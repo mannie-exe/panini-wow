@@ -1,55 +1,45 @@
 #include "panini.h"
 
 float ReadCameraFov() {
-    if (CVar_GetInt("paniniEnabled", 0)) {
-        float pf = CVar_GetFloat("paniniFov", 2.82f);
+    if (CVar_GetInt(CVar::Enabled, 0)) {
+        float pf = CVar_GetFloat(CVar::Fov, kCVarFovDefault);
         if (IsValidFov(pf)) return pf;
     }
 
-    float cvarFov = CVar_GetFloat("FoV", 0.0f);
+    float cvarFov = CVar_GetFloat(CVar::WowFov, 0.0f);
     if (IsValidFov(cvarFov)) return cvarFov;
 
-    auto pWF = *reinterpret_cast<uint8_t**>(wow::WorldFrame_Ptr);
-    if (!pWF) return 1.5708f;
-    auto pCam = *reinterpret_cast<uint8_t**>(pWF + wow::ActiveCamera_Off);
-    if (!pCam) return 1.5708f;
+    auto pCam = reinterpret_cast<uint8_t*>(g_ops.getCameraPtr());
+    if (!pCam) return kPiOver2;
 
-    float fov = *reinterpret_cast<float*>(pCam + wow::Camera_FOV_Off);
+    float fov = *reinterpret_cast<float*>(pCam + g_offsets->Camera_FOV_Off);
     if (IsValidFov(fov)) return fov;
 
-    return 1.5708f;
+    return kPiOver2;
 }
 
 IDirect3DDevice9* GetWoWDevice() {
-    auto pGx = *reinterpret_cast<uint8_t**>(wow::CGxDeviceD3d_Ptr);
+    auto pGx = *reinterpret_cast<uint8_t**>(g_offsets->CGxDeviceD3d_Ptr);
     if (!pGx) return nullptr;
-    return *reinterpret_cast<IDirect3DDevice9**>(pGx + wow::D3DDevice_Off);
-}
-
-bool IsWorldActive() {
-    auto pWF = *reinterpret_cast<uint8_t**>(wow::WorldFrame_Ptr);
-    return pWF != nullptr;
+    return *reinterpret_cast<IDirect3DDevice9**>(pGx + g_offsets->D3DDevice_Off);
 }
 
 static bool s_paniniWasEnabled = false;
 
 void UpdateCameraFov() {
-    bool enabled = CVar_GetInt("paniniEnabled", 1) != 0;
+    bool enabled = CVar_GetInt(CVar::Enabled, 1) != 0;
 
-    auto pWF = *reinterpret_cast<uint8_t**>(wow::WorldFrame_Ptr);
-    if (!pWF) return;
-    auto pCam = *reinterpret_cast<uint8_t**>(pWF + wow::ActiveCamera_Off);
+    auto pCam = reinterpret_cast<uint8_t*>(g_ops.getCameraPtr());
     if (!pCam) return;
 
     if (enabled) {
-        float pf = CVar_GetFloat("paniniFov", 2.82f);
+        float pf = CVar_GetFloat(CVar::Fov, kCVarFovDefault);
         if (IsValidFov(pf))
-            *reinterpret_cast<float*>(pCam + wow::Camera_FOV_Off) = pf;
+            *reinterpret_cast<float*>(pCam + g_offsets->Camera_FOV_Off) = pf;
     } else if (s_paniniWasEnabled) {
-        // Restore vanilla FoV to camera memory on disable transition
-        float fov = CVar_GetFloat("FoV", 1.5708f);
+        float fov = CVar_GetFloat(CVar::WowFov, kPiOver2);
         if (IsValidFov(fov))
-            *reinterpret_cast<float*>(pCam + wow::Camera_FOV_Off) = fov;
+            *reinterpret_cast<float*>(pCam + g_offsets->Camera_FOV_Off) = fov;
     }
 
     s_paniniWasEnabled = enabled;

@@ -15,6 +15,8 @@ float4 u_extra  : register(c1);
 
 #include "panini_common.hlsli"
 
+// Visualizes panini UV displacement: R = horizontal delta, G = vertical delta, B = vector length.
+// Returns black when D ~ 0 (no projection, no displacement).
 float4 main(float2 texcoord : TEXCOORD0) : COLOR {
     float D       = u_params.x;
     float halfTan = u_params.y;
