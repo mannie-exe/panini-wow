@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+DIVIDER_WIDTH=4
+DIVIDER_COLOR="#333333"
+QUALITY=90
+TEXT_SCALE=18   # text height = image height / TEXT_SCALE
+STROKE_SCALE=10 # stroke width = text size / STROKE_SCALE
+Y_SCALE=25      # y offset = image height / Y_SCALE
+
+# Inter Display Black: check common locations across platforms.
+find_font() {
+	local candidates=(
+		"$HOME/Library/Fonts/InterDisplay-Black.otf"
+		"/Library/Fonts/InterDisplay-Black.otf"
+		"/System/Library/Fonts/InterDisplay-Black.otf"
+		"$HOME/.local/share/fonts/InterDisplay-Black.otf"
+		"$HOME/.fonts/InterDisplay-Black.otf"
+		"/usr/share/fonts/truetype/inter/InterDisplay-Black.otf"
+		"/usr/share/fonts/opentype/inter/InterDisplay-Black.otf"
+		"/usr/local/share/fonts/InterDisplay-Black.otf"
+		"C:/Windows/Fonts/InterDisplay-Black.otf"
+	)
+	for f in "${candidates[@]}"; do
+		[ -f "$f" ] && echo "$f" && return
+	done
+	# Fall back to fc-match if available
+	if command -v fc-match &>/dev/null; then
+		local match
+		match=$(fc-match "Inter Display:style=Black" --format='%{file}' 2>/dev/null || true)
+		[ -n "$match" ] && [ -f "$match" ] && echo "$match" && return
+	fi
+	echo ""
+}
+
+FONT=$(find_font)
+if [ -z "$FONT" ]; then
+	echo "warning: Inter Display Black not found; labels will use default font" >&2
+	FONT_ARG=""
+else
+	FONT_ARG="-font $FONT"
+fi
+
+if ! command -v magick &>/dev/null; then
+	echo "error: ImageMagick 7 (magick) is required" >&2
+	exit 1
+fi
+
+stitch() {
+	local idx="$1"
+	local before="$SCRIPT_DIR/${idx}-before.webp"
+	local after="$SCRIPT_DIR/${idx}-after.webp"
+	local out="$SCRIPT_DIR/${idx}-compare.webp"
+
+	if [ ! -f "$before" ]; then
+		echo "skip: $before not found" >&2
+		return 1
+	fi
+	if [ ! -f "$after" ]; then
+		echo "skip: $after not found" >&2
+		return 1
+	fi
+
+	local w h text_size stroke_w y_off before_tw after_tw before_x after_x
+	w=$(magick identify -format '%w' "$before")
+	h=$(magick identify -format '%h' "$before")
+	text_size=$((h / TEXT_SCALE))
+	stroke_w=$((text_size / STROKE_SCALE))
+	[ "$stroke_w" -lt 2 ] && stroke_w=2
+	y_off=$((h / Y_SCALE))
+
+	before_tw=$(magick $FONT_ARG -pointsize "$text_size" label:"BEFORE" -format '%w' info:)
+	after_tw=$(magick $FONT_ARG -pointsize "$text_size" label:"AFTER" -format '%w' info:)
+	before_x=$(((w - before_tw) / 2))
+	after_x=$((w + DIVIDER_WIDTH + (w - after_tw) / 2))
+
+	magick "$before" \
+		\( -size "${DIVIDER_WIDTH}x${h}" "xc:${DIVIDER_COLOR}" \) \
+		"$after" \
+		+append \
+		$FONT_ARG -pointsize "$text_size" \
+		-gravity NorthWest \
+		-stroke black -strokewidth "$stroke_w" -fill white \
+		-annotate "+${before_x}+${y_off}" "BEFORE" \
+		-stroke none -fill white \
+		-annotate "+${before_x}+${y_off}" "BEFORE" \
+		-stroke black -strokewidth "$stroke_w" -fill white \
+		-annotate "+${after_x}+${y_off}" "AFTER" \
+		-stroke none -fill white \
+		-annotate "+${after_x}+${y_off}" "AFTER" \
+		-quality "$QUALITY" \
+		"$out"
+
+	local size
+	size=$(ls -lh "$out" | awk '{print $5}')
+	echo "${idx}: ${w}x${h} -> $((w * 2 + DIVIDER_WIDTH))x${h} ${size}"
+}
+
+usage() {
+	echo "usage: $(basename "$0") <index|all>"
+	echo ""
+	echo "  $(basename "$0") 01        stitch 01-before.webp + 01-after.webp -> 01-compare.webp"
+	echo "  $(basename "$0") all       stitch all *-before.webp pairs"
+	exit 1
+}
+
+[ $# -lt 1 ] && usage
+
+if [ "$1" = "all" ]; then
+	count=0
+	for before in "$SCRIPT_DIR"/*-before.webp; do
+		idx=$(basename "$before" | sed 's/-before\.webp$//')
+		stitch "$idx" && ((count++)) || true
+	done
+	echo "done: ${count} composites"
+else
+	stitch "$1"
+fi

@@ -10,12 +10,12 @@ Perspective projection (what most vintage games use) looks warped on high resolu
 
 ## Screenshots
 
-| Before | After |
-| --- | --- |
-| ![Durotar, settings dialog open, projection disabled](./images/00-before.webp) | ![Durotar, settings dialog open, projection enabled](./images/00-after.webp) |
-| ![Stormwind Trade District, standard perspective](./images/01-before.webp) | ![Stormwind Trade District, panini projection](./images/01-after.webp) |
-| ![Stormwind Park in rain, standard perspective](./images/02-before.webp) | ![Stormwind Park in rain, panini projection](./images/02-after.webp) |
-| ![Inn interior with chandelier, standard perspective](./images/03-before.webp) | ![Inn interior with chandelier, panini projection](./images/03-after.webp) |
+Before (left) and after (right) at default settings.
+
+![Durotar with settings dialog, before and after](./images/00-compare.webp)
+![Stormwind Trade District, before and after](./images/01-compare.webp)
+![Stormwind Park in rain, before and after](./images/02-compare.webp)
+![Inn interior with chandelier, before and after](./images/03-compare.webp)
 
 ## Features
 
