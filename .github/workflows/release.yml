@@ -45,9 +45,15 @@ jobs:
 
       - run: mise run test
 
+      - name: Build Probe DLL
+        run: |
+          cmake --preset cross-mingw32 -S probe
+          cmake --build probe/build/cross-mingw32
+
       - name: Package DLL
         run: |
           cp build/cross-mingw32/bin/PaniniWoW.dll PaniniWoW.dll
+          cp probe/build/cross-mingw32/bin/Probe.dll Probe.dll
 
       - name: Package Classic addon
         run: |
@@ -74,6 +80,7 @@ jobs:
           body: ${{ steps.cliff.outputs.content }}
           files: |
             PaniniWoW.dll
+            Probe.dll
             PaniniWoW-Classic.zip
             PaniniWoW-WotLK.zip
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
