@@ -4,7 +4,7 @@
 
 | Before                   | After                   |
 | ------------------------ | ----------------------- |
-| ![](./images/before.png) | ![](./images/after.png) |
+| ![](./images/before.webp) | ![](./images/after.webp) |
 
 Panini/cylindrical camera projection post-process mod for World of Warcraft Classic 1.12.1 and WotLK 3.3.5a. A single DLL detects the client version at load time and selects the correct memory offsets, hook addresses, and CVar calling conventions. The shader pipeline, projection math, and visual output are identical on both versions. Configurable in-game through a Lua addon with settings dialog and minimap button.
 
