@@ -10,7 +10,7 @@ Perspective projection (what most vintage games use) looks warped on high resolu
 
 ## Screenshots
 
-Before (left) and after (right) at default settings.
+### Left (Before) and Right (After) – Default Settings
 
 ![Durotar with settings dialog, before and after](./images/00-compare.webp)
 ![Stormwind Trade District, before and after](./images/01-compare.webp)
