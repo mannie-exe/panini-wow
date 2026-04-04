@@ -292,12 +292,13 @@ static uintptr_t g_originalRenderWorldTarget = 0;
 // regardless of frame pointer omission (-fomit-frame-pointer in -O2).
 // On Classic, the parameter slot holds whatever was on the stack (ignored).
 void __cdecl Hooked_RenderWorld(void* stackArg) {
-    void* thisPtr;
-    if (g_offsets->version == WowVersion::WotLK335) {
-        thisPtr = stackArg;
-    } else {
-        __asm__ __volatile__("" : "=c"(thisPtr));
-    }
+    // Capture ECX before any compiler-generated code can clobber it.
+    // Classic passes WorldFrame* in ECX (__thiscall); WotLK ignores it.
+    void* ecxOnEntry;
+    __asm__ __volatile__("" : "=c"(ecxOnEntry));
+
+    void* thisPtr = (g_offsets->version == WowVersion::WotLK335)
+        ? stackArg : ecxOnEntry;
 
     UpdateCameraFov();
 
