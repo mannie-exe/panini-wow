@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - [MinGW-w64](https://www.mingw-w64.org/) cross-compiler (`i686-w64-mingw32-g++`)
-- [Wine](https://www.winehq.org/) (shader compilation via vendored fxc2, test execution)
+- [Wine](https://www.winehq.org/) (shader compilation via vendored fxc2; local tests need a newer standalone Wine than CrossOver currently provides)
 - [mise](https://mise.jdx.dev/) (task runner and tool manager)
 
 ## Getting Started
@@ -15,6 +15,8 @@ mise install
 mise run build
 mise run test
 ```
+
+If the only Wine on your macOS PATH comes from CrossOver, `mise run build` and `mise run build:release` are still fine. Local `mise run test` requires a newer standalone Wine.
 
 ## Task Reference
 
@@ -35,6 +37,8 @@ mise run test
 ```
 
 151 tests cover panini math, projection invariants, config validation, shader pipeline selection, slider precision, CVar table integrity, and runtime robustness.
+
+On macOS, CrossOver is sufficient for builds and normal game use. Local test execution currently needs a newer standalone Wine than CrossOver provides.
 
 ## Development Workflow
 
@@ -164,7 +168,7 @@ Write doc comments with future doc-gen tooling in mind: structured, factual, no 
 
 ### Wine on macOS
 
-If the only Wine binary on PATH is CrossOver, shader compilation and test execution fail because CrossOver's `wine` wrapper requires a bottle and ignores `WINEPREFIX`. The CMake toolchain and shader module prefer `wineloader` (the underlying runtime) and set `WINEPREFIX` to the project-local `.wine/` directory via `cmake -E env`.
+If the only Wine binary on PATH is CrossOver, the existing toolchain configuration is still fine for shader compilation and normal builds. Local `mise run test` is the current exception; install a newer standalone Wine if you need to run the GTest suite on your machine.
 
 ## Documentation
 
