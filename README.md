@@ -11,7 +11,7 @@ Most games use rectilinear perspective projection which looks warped on high res
 
 ## Screenshots
 
-### Left (Before) and Right (After) – Default Settings
+### Left (Before) and Right (After) — Default Settings
 
 ![Durotar with settings dialog, before and after](./images/00-compare.webp)
 ![Stormwind Trade District, before and after](./images/01-compare.webp)
@@ -41,19 +41,19 @@ Both clients tested on macOS (Apple Silicon via Wine + DXVK). The DLL distinguis
 
 ### Download
 
-Grab the latest release from [Releases](https://github.com/mannie-exe/panini-wow/releases). Each release contains three artifacts: `PaniniWoW.dll` (single DLL for both versions), `PaniniWoW-Classic.zip` (addon for 1.12.1), and `PaniniWoW-WotLK.zip` (addon for 3.3.5a).
+Grab the latest release from [Releases](https://github.com/mannie-exe/panini-wow/releases). Each release contains three artifacts: `PaniniWoW.dll` (single DLL for both versions), `PaniniWoW-Classic.zip` (addon for 1.12.1), and `PaniniWoW-WotLK.zip` (addon for 3.3.5a). Each addon zip contains the addon files at the archive root.
 
 ### Setup
 
 0. Find your WoW installation, we'll refer to it as `WoW/`
 1. Copy `PaniniWoW.dll` to `WoW/mods/`
 2. Add `mods/PaniniWoW.dll` to `WoW/dlls.txt`
-3. Copy the matching addon package to `WoW/Interface/AddOns/`:
-    - Classic (1.12.1): `PaniniWoW-Classic/`
-    - WotLK (3.3.5a): `PaniniWoW-WotLK/`
-    - Leave it as ZIP **or** extract to folder of _SAME NAME_
-4. Requires a `d3d9.dll` loader (DXVK, TurtleSilicon, or vanilla-tweaks)
-5. `/reload` or restart WoW
+3. Create or open the matching addon folder:
+    - Classic (1.12.1): `WoW/Interface/AddOns/PaniniWoW-Classic/`
+    - WotLK (3.3.5a): `WoW/Interface/AddOns/PaniniWoW-WotLK/`
+4. Extract the matching addon zip into that folder. WoW does not load addons directly from the zip file; the zip contains the addon's `.toc` and `.lua` files directly, not another nested folder.
+5. Requires a `d3d9.dll` loader (DXVK, TurtleSilicon, or vanilla-tweaks)
+6. `/reload` or restart WoW
 
 ### In-Game
 
@@ -84,17 +84,9 @@ flowchart LR
 
 The DLL hooks into WoW's render pipeline between world rendering and UI drawing. Three pixel shaders run in sequence on the rendered frame; the UI draws on top undistorted. All settings are configurable in-game through the addon's settings dialog or slash commands.
 
-### Version-Specific Internals
+### Version Handling
 
-The shader pipeline, projection math, and visual output are identical on both versions. The DLL's plumbing layer adapts to each client's engine:
-
-| Mechanism        | Classic 1.12.1                                  | WotLK 3.3.5a                                          |
-| ---------------- | ----------------------------------------------- | ----------------------------------------------------- |
-| CVar system      | `__fastcall` standalone functions               | `__cdecl` wrappers (singleton loaded internally)      |
-| CVar value read  | Struct float at fixed offset                    | Struct string at +0x28, parsed via `atof`             |
-| RenderWorld hook | `__thiscall` at 0x482D70, chains on SuperWoW    | `__cdecl` callback at 0x4FAF90, standalone trampoline |
-| Camera access    | Static pointer chain (WorldFrame +0x65B8)       | `GetActiveCamera()` function call                     |
-| Trampoline pool  | Static `.data` section array + `VirtualProtect` | Same                                                  |
+The shader pipeline, projection math, and addon UX are the same on both supported clients. The DLL detects the client version at runtime, selects the matching version-specific offsets and hook plumbing, and then runs the same Panini, FXAA, and CAS post-process chain on the rendered frame.
 
 ## Building
 
@@ -107,13 +99,15 @@ mise run build             # cross-compile debug DLL (with debug logging)
 mise run test              # run GTest suite via Wine
 ```
 
+CrossOver is sufficient for builds and normal game use on macOS. Local `mise run test` requires a newer standalone Wine than CrossOver currently provides.
+
 ### Shader Compilation
 
 Five HLSL shaders (panini, fxaa, cas, tint, uv_vis) target ps_3_0 and are compiled at build time via a vendored `fxc2.exe` running under Wine. The resulting bytecode headers are embedded in the DLL.
 
 ### Wine on macOS with CrossOver
 
-If the only Wine installation is CrossOver, the build uses `wineloader` (the underlying runtime) instead of the `wine` wrapper, which requires a CrossOver bottle. CMake sets `WINEPREFIX` to the project-local `.wine/` directory automatically.
+The build tooling already handles the CrossOver case for shader compilation and normal builds. Local test execution is the current exception: `mise run test` requires a newer standalone Wine than CrossOver currently provides.
 
 ## Project Structure
 

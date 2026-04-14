@@ -29,8 +29,8 @@ void InitVersionOps();
 // Sets g_offsets to the matching offset table. Returns true on success.
 bool DetectWowVersion();
 
-// Registers all PaniniWoW CVars with the WoW CVar system.
-// Uses the version-appropriate CVarRegister function (Classic __fastcall vs WotLK __stdcall).
+// Registers all PaniniWoW CVars with the version-appropriate engine registration
+// path resolved by InitVersionOps.
 void  CVar_RegisterAll();
 
 // Reads a CVar as float using the version-appropriate lookup path.

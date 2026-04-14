@@ -2,14 +2,34 @@ name: CI
 on:
   push:
     branches: [main]
-    paths: [src/**, include/**, shaders/**, tests/**, CMakeLists.txt, cmake/**, CMakePresets.json]
+    paths:
+      - "src/**"
+      - "include/**"
+      - "shaders/**"
+      - "tests/**"
+      - "probe/**"
+      - "CMakeLists.txt"
+      - "CMakePresets.json"
+      - "cmake/**"
+      - "mise.toml"
+      - ".github/workflows/ci.yml"
   pull_request:
     branches: [main]
-    paths: [src/**, include/**, shaders/**, tests/**, CMakeLists.txt, cmake/**, CMakePresets.json]
+    paths:
+      - "src/**"
+      - "include/**"
+      - "shaders/**"
+      - "tests/**"
+      - "probe/**"
+      - "CMakeLists.txt"
+      - "CMakePresets.json"
+      - "cmake/**"
+      - "mise.toml"
+      - ".github/workflows/ci.yml"
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
