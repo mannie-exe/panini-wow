@@ -94,7 +94,10 @@ jobs:
           fi
 
           while read -r file; do
-            grep -qx "$file" classic-files.txt
+            if ! grep -Fqx "$file" classic-files.txt; then
+              echo "Missing expected file in Classic zip: $file" >&2
+              exit 1
+            fi
           done <<'EOF'
           PaniniWoW.lua
           PaniniWoW_Minimap.lua
@@ -103,7 +106,10 @@ jobs:
           EOF
 
           while read -r file; do
-            grep -qx "$file" wotlk-files.txt
+            if ! grep -Fqx "$file" wotlk-files.txt; then
+              echo "Missing expected file in WotLK zip: $file" >&2
+              exit 1
+            fi
           done <<'EOF'
           PaniniWoW.lua
           PaniniWoW_Minimap.lua

@@ -40,8 +40,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
-      - uses: jdx/mise-action@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
       - name: Install MinGW + Wine
         run: |
           sudo dpkg --add-architecture i386
@@ -51,7 +51,7 @@ jobs:
         run: WINEDEBUG=-all wineboot --init
         env:
           DISPLAY: ""
-      - uses: actions/cache@v5
+      - uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
         with:
           path: ~/.cache/CPM
           key: cpm-${{ hashFiles('CMakeLists.txt', 'cmake/**') }}
@@ -59,7 +59,7 @@ jobs:
       - run: mise run build:release
       - run: mise run build
       - run: mise run test
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: PaniniWoW-${{ github.sha }}
           path: build/cross-mingw32/bin/PaniniWoW.dll
