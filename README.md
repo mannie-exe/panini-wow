@@ -41,17 +41,17 @@ Both clients tested on macOS (Apple Silicon via Wine + DXVK). The DLL distinguis
 
 ### Download
 
-Grab the latest release from [Releases](https://github.com/mannie-exe/panini-wow/releases). Each release contains three artifacts: `PaniniWoW.dll` (single DLL for both versions), `PaniniWoW-Classic.zip` (addon for 1.12.1), and `PaniniWoW-WotLK.zip` (addon for 3.3.5a). Each addon zip contains the addon files at the archive root.
+Grab the latest release from [Releases](https://github.com/mannie-exe/panini-wow/releases). Each release contains three artifacts: `PaniniWoW.dll` (single DLL for both versions), `PaniniWoW-Classic.zip` (addon for 1.12.1), and `PaniniWoW-WotLK.zip` (addon for 3.3.5a). Each addon zip contains a top-level addon folder with the version-matching `.toc` and `.lua` files inside it.
 
 ### Setup
 
 0. Find your WoW installation, we'll refer to it as `WoW/`
 1. Copy `PaniniWoW.dll` to `WoW/mods/`
 2. Add `mods/PaniniWoW.dll` to `WoW/dlls.txt`
-3. Create or open the matching addon folder:
+3. Extract the matching addon zip into `WoW/Interface/AddOns/`. WoW does not load addons directly from the zip file.
+4. Confirm the matching addon folder now exists:
     - Classic (1.12.1): `WoW/Interface/AddOns/PaniniWoW-Classic/`
     - WotLK (3.3.5a): `WoW/Interface/AddOns/PaniniWoW-WotLK/`
-4. Extract the matching addon zip into that folder. WoW does not load addons directly from the zip file; the zip contains the addon's `.toc` and `.lua` files directly, not another nested folder.
 5. Requires a `d3d9.dll` loader (DXVK, TurtleSilicon, or vanilla-tweaks)
 6. `/reload` or restart WoW
 

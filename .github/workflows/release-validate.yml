@@ -96,12 +96,8 @@ jobs:
           cp addon/PaniniWoW-Classic/PaniniWoW-Classic.toc staging/PaniniWoW-Classic/
           cp addon/shared/*.lua staging/PaniniWoW-Classic/
           (
-            cd staging/PaniniWoW-Classic
-            zip -r ../../PaniniWoW-Classic.zip \
-              PaniniWoW.lua \
-              PaniniWoW_Minimap.lua \
-              PaniniWoW_Settings.lua \
-              PaniniWoW-Classic.toc
+            cd staging
+            zip -r ../PaniniWoW-Classic.zip PaniniWoW-Classic
           )
 
       - name: Package WotLK addon
@@ -110,12 +106,8 @@ jobs:
           cp addon/PaniniWoW-WotLK/PaniniWoW-WotLK.toc staging/PaniniWoW-WotLK/
           cp addon/shared/*.lua staging/PaniniWoW-WotLK/
           (
-            cd staging/PaniniWoW-WotLK
-            zip -r ../../PaniniWoW-WotLK.zip \
-              PaniniWoW.lua \
-              PaniniWoW_Minimap.lua \
-              PaniniWoW_Settings.lua \
-              PaniniWoW-WotLK.toc
+            cd staging
+            zip -r ../PaniniWoW-WotLK.zip PaniniWoW-WotLK
           )
 
       - name: Validate addon zips
@@ -123,8 +115,8 @@ jobs:
           unzip -Z -1 PaniniWoW-Classic.zip > classic-files.txt
           unzip -Z -1 PaniniWoW-WotLK.zip > wotlk-files.txt
 
-          if grep -Eq '^PaniniWoW-(Classic|WotLK)/' classic-files.txt wotlk-files.txt; then
-            echo "Addon zip contains a nested addon directory" >&2
+          if grep -Ev '^PaniniWoW-Classic/' classic-files.txt >/dev/null; then
+            echo "Classic zip must contain only PaniniWoW-Classic/ entries" >&2
             exit 1
           fi
 
@@ -134,11 +126,17 @@ jobs:
               exit 1
             fi
           done <<'EOF'
-          PaniniWoW.lua
-          PaniniWoW_Minimap.lua
-          PaniniWoW_Settings.lua
-          PaniniWoW-Classic.toc
+          PaniniWoW-Classic/
+          PaniniWoW-Classic/PaniniWoW.lua
+          PaniniWoW-Classic/PaniniWoW_Minimap.lua
+          PaniniWoW-Classic/PaniniWoW_Settings.lua
+          PaniniWoW-Classic/PaniniWoW-Classic.toc
           EOF
+
+          if grep -Ev '^PaniniWoW-WotLK/' wotlk-files.txt >/dev/null; then
+            echo "WotLK zip must contain only PaniniWoW-WotLK/ entries" >&2
+            exit 1
+          fi
 
           while read -r file; do
             if ! grep -Fqx "$file" wotlk-files.txt; then
@@ -146,10 +144,11 @@ jobs:
               exit 1
             fi
           done <<'EOF'
-          PaniniWoW.lua
-          PaniniWoW_Minimap.lua
-          PaniniWoW_Settings.lua
-          PaniniWoW-WotLK.toc
+          PaniniWoW-WotLK/
+          PaniniWoW-WotLK/PaniniWoW.lua
+          PaniniWoW-WotLK/PaniniWoW_Minimap.lua
+          PaniniWoW-WotLK/PaniniWoW_Settings.lua
+          PaniniWoW-WotLK/PaniniWoW-WotLK.toc
           EOF
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
