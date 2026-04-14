@@ -57,7 +57,7 @@ Grab the latest release from [Releases](https://github.com/mannie-exe/panini-wow
 
 ### In-Game
 
-The default values should be fine for most 16:9 aspect ratio displays with high FoV.
+Default settings should look fine for most people. If you play at aspect ratios wider than 16:9, experiment with higher FoV or strength values.
 
 Click the minimap button (sweet roll icon) or type `/panini` to open the settings dialog. Use `/panini help` for the full command list, but generally the in-game UI should be fine.
 
@@ -71,8 +71,8 @@ flowchart LR
 
     subgraph PaniniWoW["PaniniWoW Post-Process"]
         B["Panini Projection\n(reduce edge distortion)"]
-        C["FXAA\n(smooth edges)"]
-        D["CAS\n(sharpen details)"]
+        C["Optional FXAA\n(smooth edges)"]
+        D["Optional CAS\n(sharpen details)"]
     end
 
     subgraph Display["Display"]
@@ -82,11 +82,19 @@ flowchart LR
     A --> B --> C --> D --> E
 ```
 
-The DLL hooks into WoW's render pipeline between world rendering and UI drawing. Three pixel shaders run in sequence on the rendered frame; the UI draws on top undistorted. All settings are configurable in-game through the addon's settings dialog or slash commands.
+The DLL hooks into WoW's render pipeline between world rendering and UI drawing. The current implementation copies the rendered scene, runs one fullscreen Panini or passthrough pass, and then optionally runs FXAA and CAS passes depending on settings. The UI draws on top undistorted. All settings are configurable in-game through the addon's settings dialog or slash commands.
 
 ### Version Handling
 
 The shader pipeline, projection math, and addon UX are the same on both supported clients. The DLL detects the client version at runtime, selects the matching version-specific offsets and hook plumbing, and then runs the same Panini, FXAA, and CAS post-process chain on the rendered frame.
+
+### Performance
+
+PaniniWoW adds a small fullscreen post-process chain rather than a heavy renderer rewrite. The hot path reuses GPU resources and does not allocate or compile shaders every frame.
+
+In normal gameplay we have not observed a noticeable performance drop, but the cost is still real and mostly GPU-side. It scales with resolution and is most likely to show up on older GPUs, at high resolutions, or with Panini, FXAA, and sharpening all enabled together.
+
+We do not currently publish benchmark-based minimum or recommended specs. If your system already runs the target WoW client comfortably with D3D9 post-processing, PaniniWoW should generally be fine. If you need more headroom, disable FXAA first, then reduce sharpening, then disable Panini last.
 
 ## Building
 
