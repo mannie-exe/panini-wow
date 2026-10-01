@@ -35,6 +35,7 @@ compile_hlsl(
     ENTRY    main
     PROFILE  ps_3_0
     VARNAME  g_paniniShaderBytecode
+    DEPENDS  "${CMAKE_SOURCE_DIR}/include/panini_mapping.h"
 )
 
 set(TINT_SHADER_HEADER "${CMAKE_BINARY_DIR}/generated/tint_shader.h")
@@ -55,6 +56,7 @@ compile_hlsl(
     ENTRY    main
     PROFILE  ps_3_0
     VARNAME  g_uvVisShaderBytecode
+    DEPENDS  "${CMAKE_SOURCE_DIR}/include/panini_mapping.h"
 )
 
 set(CAS_SHADER_HEADER "${CMAKE_BINARY_DIR}/generated/cas_shader.h")
@@ -86,6 +88,7 @@ add_custom_target(shaders DEPENDS "${PANINI_SHADER_HEADER}" "${TINT_SHADER_HEADE
 add_library(PaniniWoW SHARED
     src/dllmain.cpp
     src/hooks.cpp
+    src/picking.cpp
     src/panini.cpp
     src/cvar.cpp
     src/state.cpp

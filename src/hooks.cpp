@@ -1,4 +1,5 @@
 #include "panini.h"
+#include "picking.h"
 #include "panini_shader.h"
 #include "tint_shader.h"
 #include "cas_shader.h"
@@ -26,6 +27,7 @@ static UINT                   g_bbH = 0;
 struct ScreenVertex { float x, y, z, rhw, u, v; };
 
 static void ReleaseResources() {
+    Picking_Invalidate();
     if (g_pPaniniOutputSurface) { g_pPaniniOutputSurface->Release(); g_pPaniniOutputSurface = nullptr; }
     if (g_pPaniniOutputTexture) { g_pPaniniOutputTexture->Release(); g_pPaniniOutputTexture = nullptr; }
     if (g_pSceneSurface) { g_pSceneSurface->Release(); g_pSceneSurface = nullptr; }
@@ -117,7 +119,8 @@ static bool CreateResources(IDirect3DDevice9* dev) {
     return true;
 }
 
-static void ApplyPostProcess(IDirect3DDevice9* dev) {
+static void ApplyPostProcess(IDirect3DDevice9* dev, void* worldFrame) {
+    Picking_Invalidate();
     PostProcessConfig cfg;
     PostProcessConfig_ReadFromCVars(&cfg);
 
@@ -176,36 +179,41 @@ static void ApplyPostProcess(IDirect3DDevice9* dev) {
     D3D9State saved;
     SaveD3D9State(dev, &saved);
 
-    dev->StretchRect(pBB, NULL, g_pSceneSurface, NULL, D3DTEXF_NONE);
+    HRESULT renderResult = D3D_OK;
+    auto check = [&renderResult](HRESULT hr) {
+        if (FAILED(hr) && SUCCEEDED(renderResult)) renderResult = hr;
+    };
 
-    dev->SetPixelShader(g_pPaniniShader);
-    dev->SetVertexShader(NULL);
-    dev->SetPixelShaderConstantF(0, c0, 1);
-    dev->SetPixelShaderConstantF(1, c1, 1);
+    check(dev->StretchRect(pBB, NULL, g_pSceneSurface, NULL, D3DTEXF_NONE));
 
-    dev->SetRenderState(D3DRS_ZENABLE, FALSE);
-    dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-    dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
-    dev->SetRenderState(D3DRS_STENCILENABLE, FALSE);
-    dev->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
-    dev->SetRenderState(D3DRS_COLORWRITEENABLE,
+    check(dev->SetPixelShader(g_pPaniniShader));
+    check(dev->SetVertexShader(NULL));
+    check(dev->SetPixelShaderConstantF(0, c0, 1));
+    check(dev->SetPixelShaderConstantF(1, c1, 1));
+
+    check(dev->SetRenderState(D3DRS_ZENABLE, FALSE));
+    check(dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE));
+    check(dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE));
+    check(dev->SetRenderState(D3DRS_STENCILENABLE, FALSE));
+    check(dev->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE));
+    check(dev->SetRenderState(D3DRS_COLORWRITEENABLE,
         D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN |
-        D3DCOLORWRITEENABLE_BLUE | D3DCOLORWRITEENABLE_ALPHA);
+        D3DCOLORWRITEENABLE_BLUE | D3DCOLORWRITEENABLE_ALPHA));
 
-    dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
-    dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-    dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-    dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+    check(dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1));
+    check(dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE));
+    check(dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1));
+    check(dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE));
 
-    dev->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
-    dev->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
-    dev->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
-    dev->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+    check(dev->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR));
+    check(dev->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR));
+    check(dev->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP));
+    check(dev->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP));
 
-    dev->SetTexture(0, g_pSceneTexture);
-    dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1);
+    check(dev->SetTexture(0, g_pSceneTexture));
+    check(dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1));
 
-    dev->SetRenderTarget(0, g_pPaniniOutputSurface);
+    check(dev->SetRenderTarget(0, g_pPaniniOutputSurface));
 
     float w = static_cast<float>(g_bbW);
     float h = static_cast<float>(g_bbH);
@@ -215,69 +223,79 @@ static void ApplyPostProcess(IDirect3DDevice9* dev) {
         { -0.5f,      h - 0.5f, 0.0f, 1.0f, 0.0f, 1.0f },
         {  w - 0.5f,  h - 0.5f, 0.0f, 1.0f, 1.0f, 1.0f },
     };
-    dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(ScreenVertex));
+    check(dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(ScreenVertex)));
 
     float fxaaC0[4] = { invW, invH, 0.0f, 0.0f };
 
     if (cfg.debugTint) {
-        dev->StretchRect(g_pPaniniOutputSurface, NULL, g_pSceneSurface, NULL, D3DTEXF_POINT);
-        dev->SetRenderTarget(0, pBB);
-        dev->SetTexture(0, g_pSceneTexture);
-        dev->SetPixelShader(g_pTintShader);
-        dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(ScreenVertex));
+        check(dev->StretchRect(g_pPaniniOutputSurface, NULL, g_pSceneSurface, NULL, D3DTEXF_POINT));
+        check(dev->SetRenderTarget(0, pBB));
+        check(dev->SetTexture(0, g_pSceneTexture));
+        check(dev->SetPixelShader(g_pTintShader));
+        check(dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(ScreenVertex)));
     } else if (cfg.debugUV) {
-        dev->StretchRect(g_pPaniniOutputSurface, NULL, g_pSceneSurface, NULL, D3DTEXF_POINT);
-        dev->SetRenderTarget(0, pBB);
-        dev->SetTexture(0, g_pSceneTexture);
-        dev->SetPixelShader(g_pUvVisShader);
-        dev->SetPixelShaderConstantF(0, c0, 1);
-        dev->SetPixelShaderConstantF(1, c1, 1);
-        dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(ScreenVertex));
+        check(dev->StretchRect(g_pPaniniOutputSurface, NULL, g_pSceneSurface, NULL, D3DTEXF_POINT));
+        check(dev->SetRenderTarget(0, pBB));
+        check(dev->SetTexture(0, g_pSceneTexture));
+        check(dev->SetPixelShader(g_pUvVisShader));
+        check(dev->SetPixelShaderConstantF(0, c0, 1));
+        check(dev->SetPixelShaderConstantF(1, c1, 1));
+        check(dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(ScreenVertex)));
     } else if (cfg.fxaaEnabled && cfg.sharpen > 0.0f) {
         float sh = cfg.sharpen;
         if (sh > 1.0f) sh = 1.0f;
 
-        dev->StretchRect(g_pPaniniOutputSurface, NULL, g_pSceneSurface, NULL, D3DTEXF_POINT);
-        dev->SetRenderTarget(0, g_pPaniniOutputSurface);
-        dev->SetTexture(0, g_pSceneTexture);
-        dev->SetPixelShader(g_pFxaaShader);
-        dev->SetPixelShaderConstantF(0, fxaaC0, 1);
-        dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(ScreenVertex));
+        check(dev->StretchRect(g_pPaniniOutputSurface, NULL, g_pSceneSurface, NULL, D3DTEXF_POINT));
+        check(dev->SetRenderTarget(0, g_pPaniniOutputSurface));
+        check(dev->SetTexture(0, g_pSceneTexture));
+        check(dev->SetPixelShader(g_pFxaaShader));
+        check(dev->SetPixelShaderConstantF(0, fxaaC0, 1));
+        check(dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(ScreenVertex)));
 
-        dev->StretchRect(g_pPaniniOutputSurface, NULL, g_pSceneSurface, NULL, D3DTEXF_POINT);
+        check(dev->StretchRect(g_pPaniniOutputSurface, NULL, g_pSceneSurface, NULL, D3DTEXF_POINT));
 
         float casC1[4] = { invW, invH, 0.0f, 0.0f };
         float casC2[4] = { sh, 0.0f, 0.0f, 0.0f };
 
-        dev->SetRenderTarget(0, pBB);
-        dev->SetTexture(0, g_pSceneTexture);
-        dev->SetPixelShader(g_pCasShader);
-        dev->SetPixelShaderConstantF(1, casC1, 1);
-        dev->SetPixelShaderConstantF(2, casC2, 1);
-        dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(ScreenVertex));
+        check(dev->SetRenderTarget(0, pBB));
+        check(dev->SetTexture(0, g_pSceneTexture));
+        check(dev->SetPixelShader(g_pCasShader));
+        check(dev->SetPixelShaderConstantF(1, casC1, 1));
+        check(dev->SetPixelShaderConstantF(2, casC2, 1));
+        check(dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(ScreenVertex)));
     } else if (cfg.fxaaEnabled) {
-        dev->StretchRect(g_pPaniniOutputSurface, NULL, g_pSceneSurface, NULL, D3DTEXF_POINT);
-        dev->SetRenderTarget(0, pBB);
-        dev->SetTexture(0, g_pSceneTexture);
-        dev->SetPixelShader(g_pFxaaShader);
-        dev->SetPixelShaderConstantF(0, fxaaC0, 1);
-        dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(ScreenVertex));
+        check(dev->StretchRect(g_pPaniniOutputSurface, NULL, g_pSceneSurface, NULL, D3DTEXF_POINT));
+        check(dev->SetRenderTarget(0, pBB));
+        check(dev->SetTexture(0, g_pSceneTexture));
+        check(dev->SetPixelShader(g_pFxaaShader));
+        check(dev->SetPixelShaderConstantF(0, fxaaC0, 1));
+        check(dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(ScreenVertex)));
     } else if (cfg.sharpen > 0.0f) {
         float sh = cfg.sharpen;
         if (sh > 1.0f) sh = 1.0f;
-        dev->StretchRect(g_pPaniniOutputSurface, NULL, g_pSceneSurface, NULL, D3DTEXF_POINT);
+        check(dev->StretchRect(g_pPaniniOutputSurface, NULL, g_pSceneSurface, NULL, D3DTEXF_POINT));
 
         float casC1[4] = { invW, invH, 0.0f, 0.0f };
         float casC2[4] = { sh, 0.0f, 0.0f, 0.0f };
 
-        dev->SetRenderTarget(0, pBB);
-        dev->SetTexture(0, g_pSceneTexture);
-        dev->SetPixelShader(g_pCasShader);
-        dev->SetPixelShaderConstantF(1, casC1, 1);
-        dev->SetPixelShaderConstantF(2, casC2, 1);
-        dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(ScreenVertex));
+        check(dev->SetRenderTarget(0, pBB));
+        check(dev->SetTexture(0, g_pSceneTexture));
+        check(dev->SetPixelShader(g_pCasShader));
+        check(dev->SetPixelShaderConstantF(1, casC1, 1));
+        check(dev->SetPixelShaderConstantF(2, casC2, 1));
+        check(dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(ScreenVertex)));
     } else {
-        dev->StretchRect(g_pPaniniOutputSurface, NULL, pBB, NULL, D3DTEXF_LINEAR);
+        check(dev->StretchRect(g_pPaniniOutputSurface, NULL, pBB, NULL, D3DTEXF_LINEAR));
+    }
+
+    if (SUCCEEDED(renderResult) && !cfg.debugUV) {
+        Picking_Publish(worldFrame, {cfg.strength, halfTan, zoom, cfg.verticalComp, aspect});
+    } else if (FAILED(renderResult)) {
+        static bool loggedFailure = false;
+        if (!loggedFailure) {
+            LOG_INFO("pick", "post-process failed hr=0x%08X; correction inactive", unsigned(renderResult));
+            loggedFailure = true;
+        }
     }
 
     RestoreD3D9State(dev, &saved);
@@ -300,20 +318,33 @@ void __cdecl Hooked_RenderWorld(void* stackArg) {
     void* thisPtr = (g_offsets->version == WowVersion::WotLK335)
         ? stackArg : ecxOnEntry;
 
+    static bool pickingAttempted = false;
+    if (!pickingAttempted) {
+        pickingAttempted = true;
+        if (!Picking_Install(GetModuleHandleA(NULL)))
+            LOG_INFO("pick", "picking correction unavailable for this client");
+    }
+
     UpdateCameraFov();
 
     g_ops.callOriginalRenderWorld(g_originalRenderWorldTarget, thisPtr);
 
-    if (!g_resourcesReady || !g_ops.isWorldActive())
+    if (!g_resourcesReady || !g_ops.isWorldActive()) {
+        Picking_Invalidate();
         return;
+    }
 
     IDirect3DDevice9* dev = GetWoWDevice();
-    if (!dev) return;
+    if (!dev) {
+        Picking_Invalidate();
+        return;
+    }
 
-    ApplyPostProcess(dev);
+    ApplyPostProcess(dev, thisPtr);
 }
 
 HRESULT __stdcall Hooked_EndScene(IDirect3DDevice9* dev) {
+    if (!g_ops.isWorldActive()) Picking_Invalidate();
     if (!g_resourcesReady) {
         if (g_ops.isWorldActive() && CreateResources(dev)) {
             LOG_INFO("hook", "EndScene: resources created after world active");

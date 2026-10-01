@@ -47,9 +47,9 @@ else()
         "${WINE_EXECUTABLE}" "${FXC2_EXE}")
 endif()
 
-# compile_hlsl(SOURCE ... OUTPUT ... ENTRY ... PROFILE ... VARNAME ...)
+# compile_hlsl(SOURCE ... OUTPUT ... ENTRY ... PROFILE ... VARNAME ... DEPENDS ...)
 function(compile_hlsl)
-    cmake_parse_arguments(HLSL "" "SOURCE;OUTPUT;ENTRY;PROFILE;VARNAME" "" ${ARGN})
+    cmake_parse_arguments(HLSL "" "SOURCE;OUTPUT;ENTRY;PROFILE;VARNAME" "DEPENDS" ${ARGN})
 
     if(NOT HLSL_SOURCE)
         message(FATAL_ERROR "compile_hlsl: SOURCE is required")
@@ -80,7 +80,7 @@ function(compile_hlsl)
             -Vn${HLSL_VARNAME}
             "-Fh${HLSL_OUTPUT}"
             "${HLSL_SOURCE_ABS}"
-        DEPENDS "${HLSL_SOURCE_ABS}" "${FXC2_EXE}" "${FXC2_DLL_DEST}"
+        DEPENDS ${HLSL_DEPENDS} "${HLSL_SOURCE_ABS}" "${FXC2_EXE}" "${FXC2_DLL_DEST}"
         COMMENT "HLSL: ${HLSL_SOURCE} -> ${HLSL_OUTPUT} (${HLSL_PROFILE})"
         VERBATIM
     )

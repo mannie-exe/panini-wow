@@ -8,4 +8,5 @@ target_sources(PaniniTests PRIVATE
     unit/RuntimeRobustnessTest.cc
     unit/ShaderPipelineTest.cc
     unit/CVarTableTest.cc
+    unit/PickingTest.cc
 )

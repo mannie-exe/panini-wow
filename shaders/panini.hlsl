@@ -14,16 +14,13 @@ sampler2D sceneTex : register(s0);
 float4 u_params : register(c0);
 float4 u_extra  : register(c1);
 
-#include "panini_common.hlsli"
+#include "../include/panini_mapping.h"
 
 // Sample scene texture through panini projection. Returns black for out-of-bounds UVs.
 // gradX/gradY from ddx/ddy enable anisotropic filtering via tex2Dgrad.
 float4 paniniSample(float2 texcoord, float D, float halfTan, float zoom, float S, float aspect, float2 gradX, float2 gradY) {
-    float2 maxRectXY = float2(halfTan * aspect, halfTan);
-    float2 screenXY = (texcoord * 2.0 - 1.0) / max(zoom, 0.001);
-    float2 projXY = screenXY * maxRectXY;
-    float3 ray = paniniInverse(projXY, D, S);
-    float2 srcUV = (ray.xy / ray.z) / maxRectXY * 0.5 + 0.5;
+    float2 srcUV;
+    PaniniSourceUV(texcoord.x, texcoord.y, D, halfTan, zoom, S, aspect, srcUV.x, srcUV.y);
 
     if (srcUV.x >= 0.0 && srcUV.x <= 1.0 && srcUV.y >= 0.0 && srcUV.y <= 1.0)
         return tex2Dgrad(sceneTex, srcUV, gradX, gradY);
