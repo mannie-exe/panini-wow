@@ -13,7 +13,7 @@
 float4 u_params : register(c0);
 float4 u_extra  : register(c1);
 
-#include "panini_common.hlsli"
+#include "../include/panini_mapping.h"
 
 // Visualizes panini UV displacement: R = horizontal delta, G = vertical delta, B = vector length.
 // Returns black when D ~ 0 (no projection, no displacement).
@@ -27,11 +27,8 @@ float4 main(float2 texcoord : TEXCOORD0) : COLOR {
     if (D < 0.001)
         return float4(0.0, 0.0, 0.0, 1.0);
 
-    float2 maxRectXY = float2(halfTan * aspect, halfTan);
-    float2 screenXY = (texcoord * 2.0 - 1.0) / max(zoom, 0.001);
-    float2 projXY = screenXY * maxRectXY;
-    float3 ray = paniniInverse(projXY, D, S);
-    float2 srcUV = (ray.xy / ray.z) / maxRectXY * 0.5 + 0.5;
+    float2 srcUV;
+    PaniniSourceUV(texcoord.x, texcoord.y, D, halfTan, zoom, S, aspect, srcUV.x, srcUV.y);
 
     float2 delta = srcUV - texcoord;
     float2 scaled = delta * 20.0;
