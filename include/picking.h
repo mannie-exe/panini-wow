@@ -11,7 +11,7 @@ struct PickingProjection {
     float aspect = 1.0f;
 };
 
-// Converts Classic's bottom-left device coordinates through the full backbuffer
+// Converts the client's bottom-left device coordinates through the full backbuffer
 // projection. Returns false for black borders or invalid inputs, leaving x/y
 // unchanged. Width/height are the client's device extents, not pixel dimensions.
 inline bool RemapPickingPoint(const PickingProjection& p, float width, float height,
@@ -37,10 +37,10 @@ inline bool RemapPickingPoint(const PickingProjection& p, float width, float hei
 }
 
 // Installs on the game/render thread for a mapped client PE image. Returns false
-// without patching unknown/modified code. Only Classic build 5875 is supported.
+// without patching unknown/modified code. Supports Classic 5875 and WotLK 12340.
 bool Picking_Install(void* clientImage);
 
-// Publishes rendered constants for the matching Classic world frame and camera.
+// Publishes rendered constants for the matching world frame and camera.
 // Does nothing unless the validated picking hook is installed.
 void Picking_Publish(void* worldFrame, const PickingProjection& projection);
 
