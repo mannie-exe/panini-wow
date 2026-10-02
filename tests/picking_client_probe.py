@@ -3,7 +3,8 @@
 Usage: python tests/picking_client_probe.py path/to/WoW.exe path/to/PaniniWoW.dll
 Requires: pefile, unicorn. Client files are read only; no game is launched.
 Win32 locks/protection and matrix unprojection are controlled stubs. All picking
-logic, native bounds checks, camera translation, and ABI instructions execute.
+logic, caller argument setup, native bounds checks, camera translation, and ABI
+instructions execute.
 """
 
 import math
@@ -31,10 +32,12 @@ def run(client_path, dll_path):
     profiles = {
         0x4510B6DB: dict(name="Classic 5875", ray_call=0x48130C, ray=0x4813B0,
                          world_frame=0xB4B2BC, device_width=0x832A44,
-                         camera_offset=0x65B8, rect_offset=0x390, unproject=0x7AD2C0),
+                         camera_offset=0x65B8, rect_offset=0x390, unproject=0x7AD2C0,
+                         ray_setup=0x4812D0, near_local=-0x10, far_local=-0x1C, no_hit=0x481388),
         0x4C2452FE: dict(name="WotLK 12340", ray_call=0x4F9EC1, ray=0x4F6450,
                          world_frame=0xB7436C, device_width=0xAC0CB4,
-                         camera_offset=0x7E20, rect_offset=0x320, unproject=0x4BF0F0),
+                         camera_offset=0x7E20, rect_offset=0x320, unproject=0x4BF0F0,
+                         ray_setup=0x4F9E93, near_local=-0xC, far_local=-0x18, no_hit=0x4F9F35),
     }
     profile = profiles.get(client.FILE_HEADER.TimeDateStamp)
     require(profile is not None, "supported client build")
@@ -66,6 +69,7 @@ def run(client_path, dll_path):
 
     stubs = {}
     fail_api = [None]
+    caller_check = {}
     for descriptor in dll.DIRECTORY_ENTRY_IMPORT:
         for entry in descriptor.imports:
             address = imports + len(stubs) * 16
@@ -80,6 +84,11 @@ def run(client_path, dll_path):
 
     def intercept(machine, address, size, data):
         sp = machine.reg_read(UC_X86_REG_ESP)
+        if address == caller_check.get("target"):
+            require(machine.reg_read(UC_X86_REG_ECX) == frame, "caller supplies WorldFrame in ECX")
+            actual = tuple(read32(sp+offset) for offset in (0, 4, 8, 12, 16))
+            require(actual == caller_check["arguments"], "caller supplies return address, x, y, near, far")
+            caller_check["entered"] = True
         if address == profile["unproject"]:
             u, v = read_floats(sp + 4, 2)
             # Classic uses fastcall outputs; WotLK passes all four args on
@@ -190,10 +199,45 @@ def run(client_path, dll_path):
     hook = (ray_call+5 + read32(ray_call+1)) & 0xFFFFFFFF
     require(hook != native_ray, "call redirected")
 
+    def expect_caller_ray(x, y, expected=None):
+        # Start after unrelated hit-test setup, leaving the client's own
+        # instructions to construct all four arguments and execute CALL/test/JE.
+        bp, sp = stack + 0xD000, stack + 0xCF00
+        near_local, far_local = bp + profile["near_local"], bp + profile["far_local"]
+        floats(bp+8, x, y)
+        floats(near_local, -123, -123, -123)
+        floats(far_local, -123, -123, -123)
+        for register in saved_registers:
+            uc.reg_write(register, 0x12345678)
+        uc.reg_write(UC_X86_REG_EBP, bp)
+        uc.reg_write(UC_X86_REG_ESI, frame)
+        uc.reg_write(UC_X86_REG_ECX, 0xBAD)
+        uc.reg_write(UC_X86_REG_ESP, sp)
+        bits = struct.unpack("<II", struct.pack("<ff", x, y))
+        caller_check.update(target=hook, arguments=(ray_call+5, *bits, near_local, far_local), entered=False)
+        continuation = ray_call+9 if expected is not None else profile["no_hit"]
+        try:
+            uc.emu_start(profile["ray_setup"], continuation, count=100000)
+            require(caller_check["entered"], "patched CALL reaches hook")
+            require(uc.reg_read(UC_X86_REG_EIP) == continuation, "native hit/no-hit branch")
+            require(uc.reg_read(UC_X86_REG_EAX) == int(expected is not None), "caller receives ray result")
+            require(uc.reg_read(UC_X86_REG_ESP) == sp, "caller stack restored")
+            for register in saved_registers:
+                value = bp if register == UC_X86_REG_EBP else frame if register == UC_X86_REG_ESI else 0x12345678
+                require(uc.reg_read(register) == value, "caller registers preserved")
+            actual = read_floats(near_local, 3) + read_floats(far_local, 3)
+            result = ((10+expected[0], 20+expected[1], 30, 10+expected[0], 20+expected[1], 31)
+                      if expected is not None else (0,)*6)
+            require(all(abs(a-b) < 0.00001 for a, b in zip(actual, result)), "caller output vectors")
+        finally:
+            caller_check.clear()
+
     expect_ray(hook, 0.5, 0.75)
+    expect_caller_ray(0.4, 0.3375, (0.5, 0.75))
     floats(projection, 0.5, half_tan, zoom, 0.0, 16/9)
     call(publish, [frame, projection])
     expected_y = 0.5 + 0.25/zoom
+    expect_caller_ray(0.4, 0.3375, (0.5, expected_y))
     for _ in range(1000):
         expect_ray(hook, 0.5, expected_y)
     floats(frame+rect_offset, 0.05, 0.1, 0.4, 0.7)
@@ -217,16 +261,18 @@ def run(client_path, dll_path):
     floats(projection, 0.0)
     call(publish, [frame, projection])
     expect_ray(hook, 0.5, 0.75)
+    expect_caller_ray(0.4, 0.3375, (0.5, 0.75))
     floats(projection, 0.5, math.tan(1.57/2), 1.0, 0.0, 16/9)
     call(publish, [frame, projection])
     floats(near, -123, -123, -123)
     floats(far, -123, -123, -123)
     require(ray(hook, 0.8, 0.225) == 0, "black border returns no hit")
+    expect_caller_ray(0.8, 0.225)
     for x, y in ((-0.1, 0.225), (0.9, 0.225), (0.4, -0.1), (0.4, 0.5)):
         require(ray(native_ray, x, y) == 0, "native outside-frame returns no hit")
     require(read_floats(near, 3) == (-123,)*3 and read_floats(far, 3) == (-123,)*3,
             "no-hit leaves output vectors untouched")
-    print(f"PASS {profile['name']} ({client_path.name}) + {dll_path}: patch guards, 1000 native rays, ABI, viewport, "
+    print(f"PASS {profile['name']} ({client_path.name}) + {dll_path}: patch guards, native caller, 1000 native rays, ABI, viewport, "
           "camera/frame/resize invalidation, disabled, black borders")
 
 
